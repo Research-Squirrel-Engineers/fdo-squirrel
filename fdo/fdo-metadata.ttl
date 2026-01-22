@@ -1,0 +1,108 @@
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix fdo: <https://w3id.org/fdo-squirrel/> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://doi.org/10.5281/zenodo.1234567> a dcat:Dataset,
+        fdo:3DDataFDO ;
+    dct:created "2024-11-12"^^xsd:date ;
+    dct:description "A curated collection of high-resolution 3D models of early medieval Ogham stones from south-west Ireland, including associated metadata and paradata." ;
+    dct:hasVersion "1.0.0" ;
+    dct:identifier "10.5281/zenodo.1234567" ;
+    dct:issued "2025-01-05"^^xsd:date ;
+    dct:license <https://spdx.org/licenses/CC-BY-4.0.html>,
+        "CC-BY-4.0" ;
+    dct:modified "2025-02-01"^^xsd:date ;
+    dct:publisher <https://www.wikidata.org/entity/Q151991> ;
+    dct:spatial <https://www.wikidata.org/entity/Q28>,
+        "Ireland" ;
+    dct:temporal "Early Middle Ages" ;
+    dct:title "3D Ogham Stones Collection (South-West Ireland)" ;
+    dcat:distribution <urn:fdo-squirrel:dist/252cccf77d6b7f0e>,
+        <urn:fdo-squirrel:dist/26ed9cc07957fcf2>,
+        <urn:fdo-squirrel:dist/498bba116bd074fa>,
+        <urn:fdo-squirrel:dist/90de5630c77d77bc>,
+        <urn:fdo-squirrel:dist/b5625ea2fcb29014>,
+        <urn:fdo-squirrel:dist/cdb0cfb8777d33e0>,
+        <urn:fdo-squirrel:dist/dda23797825e4f98> ;
+    dcat:keyword <https://www.wikidata.org/entity/Q188055>,
+        "3D cultural heritage",
+        "Ogham stones" ;
+    dcat:landingPage <https://example.org/fdo/ogham-3d> ;
+    fdo:authors [ a schema:Person ;
+            schema:familyName "Thiery" ;
+            schema:givenName "Florian" ;
+            schema:identifier <https://orcid.org/0000-0002-3246-3531> ] ;
+    fdo:cff_version "1.2.0" ;
+    fdo:date_released "2025-01-15"^^xsd:date ;
+    fdo:fdo_class "3D Data" ;
+    fdo:keywords "3d",
+        "archaeology",
+        "ogham" ;
+    fdo:license "MIT" ;
+    fdo:message "If you use this software, please cite it as below." ;
+    fdo:repository_code <https://github.com/example/ogham3d-toolkit> ;
+    fdo:title "Ogham3D Processing Toolkit" ;
+    fdo:type "dataset" ;
+    fdo:version "0.3.2" .
+
+<https://www.wikidata.org/entity/Q151991> a schema:Organization ;
+    schema:name "Leibniz-Zentrum für Archäologie" .
+
+<urn:fdo-squirrel:dist/252cccf77d6b7f0e> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/data/model/ke053-012005_-_baile_an_ghoilin_-_ogham_stone_Ballinrannig_II.glb> ;
+    dcat:byteSize 1885196 ;
+    dcat:mediaType "model/gltf-binary" ;
+    fdo:path "data/model/ke053-012005_-_baile_an_ghoilin_-_ogham_stone_Ballinrannig_II.glb" ;
+    fdo:role "model" ;
+    fdo:sha256 "252cccf77d6b7f0e8fd1054067140594ca1d78eca9b74cd7a9a8ff809018e7f1" .
+
+<urn:fdo-squirrel:dist/26ed9cc07957fcf2> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/data/images/ChatGPT%20Image%20Nov%2022%2C%202025%2C%2001_11_04%20PM.png> ;
+    dcat:byteSize 2303469 ;
+    dcat:mediaType "image/png" ;
+    fdo:path "data/images/ChatGPT Image Nov 22, 2025, 01_11_04 PM.png" ;
+    fdo:role "documentation" ;
+    fdo:sha256 "26ed9cc07957fcf2247d66f347d8e4cfe76843b4020310131e11595c8a89f292" .
+
+<urn:fdo-squirrel:dist/498bba116bd074fa> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/CITATION.cff> ;
+    dcat:byteSize 444 ;
+    dcat:mediaType "text/yaml" ;
+    fdo:path "CITATION.cff" ;
+    fdo:role "metadata" ;
+    fdo:sha256 "498bba116bd074fa85c428aa844141510b93aec1e7be0f5cd205265cbdd9cd0b" .
+
+<urn:fdo-squirrel:dist/90de5630c77d77bc> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/data/images/ChatGPT%20Image%20Nov%2022%2C%202025%2C%2001_17_23%20PM.png> ;
+    dcat:byteSize 2719833 ;
+    dcat:mediaType "image/png" ;
+    fdo:path "data/images/ChatGPT Image Nov 22, 2025, 01_17_23 PM.png" ;
+    fdo:role "documentation" ;
+    fdo:sha256 "90de5630c77d77bcafe13d58e9cc199a4d3f06ea57a46fa2a8bacebed6b62831" .
+
+<urn:fdo-squirrel:dist/b5625ea2fcb29014> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/data/images/ChatGPT%20Image%20Nov%2022%2C%202025%2C%2001_02_07%20PM.png> ;
+    dcat:byteSize 2187294 ;
+    dcat:mediaType "image/png" ;
+    fdo:path "data/images/ChatGPT Image Nov 22, 2025, 01_02_07 PM.png" ;
+    fdo:role "documentation" ;
+    fdo:sha256 "b5625ea2fcb290144d0f531bb0916fc236f467aa6515b26a2a682a1a12271a76" .
+
+<urn:fdo-squirrel:dist/cdb0cfb8777d33e0> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/data/images/ChatGPT%20Image%20Nov%2022%2C%202025%2C%2012_58_28%20PM.png> ;
+    dcat:byteSize 2261131 ;
+    dcat:mediaType "image/png" ;
+    fdo:path "data/images/ChatGPT Image Nov 22, 2025, 12_58_28 PM.png" ;
+    fdo:role "documentation" ;
+    fdo:sha256 "cdb0cfb8777d33e052cc540eb8df08503512350c44210d6a9e991a560b917596" .
+
+<urn:fdo-squirrel:dist/dda23797825e4f98> a dcat:Distribution ;
+    dcat:accessURL <urn:fdo-squirrel:content/MD.cff> ;
+    dcat:byteSize 960 ;
+    dcat:mediaType "text/yaml" ;
+    fdo:path "MD.cff" ;
+    fdo:role "metadata" ;
+    fdo:sha256 "dda23797825e4f98b7a30348c609e514099434db0371875668c67d8664322062" .
+
