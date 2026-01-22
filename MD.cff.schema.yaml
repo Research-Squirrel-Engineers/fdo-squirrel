@@ -1,0 +1,187 @@
+# ============================================================
+# MD.cff — FAIR Digital Object Metadata
+# Version: 0.1
+# Status: Draft / Community-defined
+# ============================================================
+
+schema_version: "0.1"
+schema_name: "MD.cff"
+description: >
+  Minimal metadata schema for describing FAIR Digital Objects (FDOs).
+  MD.cff describes the FDO as a whole, independent of specific software
+  citation metadata (CITATION.cff).
+
+# ------------------------------------------------------------
+# Core FDO identification
+# ------------------------------------------------------------
+fdo_id:
+  type: string
+  required: true
+  description: >
+    Global identifier of the FDO.
+    Preferred: DOI (10.xxxx/...)
+    Fallbacks: URL, URN, or local identifier (e.g. filename).
+
+fdo_class:
+  type: string
+  required: true
+  controlled_vocabulary:
+    - Software
+    - Analysis
+    - "3D Data"
+  rdf_mapping:
+    Software: fdo:SoftwareFDO
+    Analysis: fdo:AnalysisFDO
+    "3D Data": fdo:3DDataFDO
+  description: >
+    High-level class of the FAIR Digital Object.
+
+# ------------------------------------------------------------
+# Descriptive metadata
+# ------------------------------------------------------------
+title:
+  type: string
+  required: true
+  description: Human-readable title of the FDO.
+
+description:
+  type: string
+  required: true
+  description: Free-text description of the FDO.
+
+version:
+  type: string
+  required: true
+  description: Version of the FDO (semantic or project-defined).
+
+created:
+  type: date
+  required: true
+  format: ISO-8601
+  description: Creation date of the FDO.
+
+issued:
+  type: date
+  required: false
+  format: ISO-8601
+  description: Date of first public release.
+
+modified:
+  type: date
+  required: false
+  format: ISO-8601
+  description: Date of last modification.
+
+# ------------------------------------------------------------
+# Agents & rights
+# ------------------------------------------------------------
+publisher:
+  type: object
+  required: false
+  properties:
+    label:
+      type: string
+      required: true
+    uri:
+      type: iri
+      required: false
+  description: >
+    Publishing organisation or person.
+    URI may point to Wikidata, ROR, GND, etc.
+
+license:
+  type: object
+  required: false
+  properties:
+    id:
+      type: string
+      required: false
+      description: SPDX identifier if available.
+    uri:
+      type: iri
+      required: false
+      description: URL of the license text.
+  description: >
+    License applying to the FDO.
+
+# ------------------------------------------------------------
+# Discovery & context
+# ------------------------------------------------------------
+keywords:
+  type: array
+  required: false
+  items:
+    type: object
+    properties:
+      label:
+        type: string
+        required: true
+      uri:
+        type: iri
+        required: false
+  description: >
+    Keywords describing the FDO. Labels are mandatory,
+    URIs optional (thesauri, Wikidata, etc.).
+
+landing_page:
+  type: iri
+  required: false
+  description: Human-readable landing page of the FDO.
+
+spatial:
+  type: object
+  required: false
+  properties:
+    label:
+      type: string
+      required: true
+    uri:
+      type: iri
+      required: false
+  description: Spatial coverage (lightweight, referential).
+
+temporal:
+  type: object
+  required: false
+  properties:
+    label:
+      type: string
+      required: true
+    uri:
+      type: iri
+      required: false
+  description: Temporal coverage (lightweight, referential).
+
+# ------------------------------------------------------------
+# Distributions (declarative only!)
+# ------------------------------------------------------------
+distributions:
+  type: array
+  required: false
+  description: >
+    Logical description of artefacts contained in the FDO.
+    Technical RDF distributions are generated externally.
+  items:
+    type: object
+    properties:
+      path:
+        type: string
+        required: true
+        description: Relative path inside ZIP or package.
+      media_type:
+        type: string
+        required: true
+        description: MIME type.
+      role:
+        type: string
+        required: true
+        description: >
+          Role of the artefact (data, software, model, docs, metadata, script).
+      sha256:
+        type: string
+        required: false
+        description: SHA-256 checksum.
+      byte_size:
+        type: integer
+        required: false
+        description: File size in bytes.

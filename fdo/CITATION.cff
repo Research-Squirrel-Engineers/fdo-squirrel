@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+
+message: "If you use this software, please cite it as below."
+
+title: "Ogham3D Processing Toolkit"
+
+type: dataset
+
+version: "0.3.2"
+
+date-released: "2025-01-15"
+
+authors:
+  - given-names: "Florian"
+    family-names: "Thiery"
+    orcid: "https://orcid.org/0000-0002-3246-3531"
+
+repository-code: "https://github.com/example/ogham3d-toolkit"
+
+license: "MIT"
+
+keywords:
+  - ogham
+  - archaeology
+  - 3d

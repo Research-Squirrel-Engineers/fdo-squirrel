@@ -1,0 +1,40 @@
+# ==========================================
+# MD.cff — FDO Metadata Core (v0.1)
+# ==========================================
+
+fdo_id: "10.5281/zenodo.1234567"
+
+title: "3D Ogham Stones Collection (South-West Ireland)"
+
+description: >
+  A curated collection of high-resolution 3D models of early medieval
+  Ogham stones from south-west Ireland, including associated metadata
+  and paradata.
+
+version: "1.0.0"
+
+created: "2024-11-12"
+issued: "2025-01-05"
+modified: "2025-02-01"
+
+publisher:
+  - id: "https://www.wikidata.org/entity/Q151991"
+    label: "Leibniz-Zentrum für Archäologie"
+
+license: "CC-BY-4.0"
+
+keywords:
+  - id: "https://www.wikidata.org/entity/Q188055"
+    label: "Ogham stones"
+  - label: "3D cultural heritage"
+
+landing_page: "https://example.org/fdo/ogham-3d"
+
+spatial:
+  - id: "https://www.wikidata.org/entity/Q28"
+    label: "Ireland"
+
+temporal:
+  - label: "Early Middle Ages"
+
+fdo_class: "3D Data"
