@@ -21,7 +21,7 @@
         <urn:fdo-squirrel:dist/90de5630c77d77bc>,
         <urn:fdo-squirrel:dist/cdb0cfb8777d33e0>,
         <urn:fdo-squirrel:dist/252cccf77d6b7f0e>,
-        <urn:fdo-squirrel:dist/6eaafa18221332c1>  .
+        <urn:fdo-squirrel:dist/1616223928d210ca>  .
 
 <https://www.wikidata.org/entity/Q151991> a schema:Organization ;
     schema:name "Leibniz-Zentrum für Archäologie" .
@@ -77,13 +77,13 @@
     fdo:role "model" ;
     fdo:sha256 "252cccf77d6b7f0e8fd1054067140594ca1d78eca9b74cd7a9a8ff809018e7f1"  .
 
-<urn:fdo-squirrel:dist/6eaafa18221332c1> a dcat:Distribution ;
+<urn:fdo-squirrel:dist/1616223928d210ca> a dcat:Distribution ;
     dcat:accessURL <urn:fdo-squirrel:content/MD.cff> ;
-    dcat:byteSize 1396 ;
+    dcat:byteSize 1291 ;
     dcat:mediaType "text/yaml" ;
     fdo:path "MD.cff" ;
     fdo:role "data" ;
-    fdo:sha256 "6eaafa18221332c1dd7d52b0129c0a9ddc5730c1ca421a2dd413066e2872be1d"  .
+    fdo:sha256 "1616223928d210ca01617a4c8ad16c315d94608502b0864e4317a9213b966549"  .
 
 <https://doi.org/10.5281/zenodo.1234567> cff:keywords "3d" .
 <https://doi.org/10.5281/zenodo.1234567> cff:keywords "archaeology" .

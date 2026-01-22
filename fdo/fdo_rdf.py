@@ -496,6 +496,7 @@ def crosswalk_to_rdf_turtle(
       - ZIP structure as distributions with deterministic URN IDs + accessURL + sha256
       - crosswalk triples appended (schema/codemeta/wdt/cff etc.), post-processed
       - JSON provenance report (console + file)
+      - identifiers mapped from MD.cff (cw.identifiers)
     """
     tracker = ProvenanceTracker()
     rules_cfg = _load_classification_rules(tracker=tracker)
@@ -620,10 +621,21 @@ def crosswalk_to_rdf_turtle(
     # Creators (dataset -> persons)
     for cid, _clabel in cw.creators:
         lines.append(f"    dct:creator <{cid}> ;")
+
     if cw.creators:
+        # Heuristic provenance: ORCID-style IDs typically come from CITATION.cff
+        creators_source = "MD.cff"
+        try:
+            if any(
+                isinstance(cid, str) and "orcid.org" in cid for cid, _ in cw.creators
+            ):
+                creators_source = "CITATION.cff"
+        except Exception:
+            pass
+
         tracker.record(
             field="dataset.creators",
-            source="MD.cff",
+            source=creators_source,
             detail={"count": len(cw.creators)},
             count_inc=len(cw.creators),
         )
@@ -655,6 +667,63 @@ def crosswalk_to_rdf_turtle(
         detail={"publisher_id": cw.publisher_id, "publisher_label": cw.publisher_label},
     )
     tracker.record(field="dataset.title", source="MD.cff", detail={"title": cw.title})
+
+    # -----------------------------
+    # identifiers (MD.cff) → RDF
+    # -----------------------------
+    identifiers = getattr(cw, "identifiers", None)
+    if identifiers and isinstance(identifiers, list):
+        ident_count = 0
+        sameas_count = 0
+
+        for ident in identifiers:
+            # allow either dicts or strings
+            if isinstance(ident, str):
+                if ident.startswith(("http://", "https://")):
+                    lines.append(f"    dct:identifier <{ident}> ;")
+                else:
+                    lines.append(f'    dct:identifier "{ident}" ;')
+                ident_count += 1
+                continue
+
+            if not isinstance(ident, dict):
+                continue
+
+            ident_id = ident.get("id")
+            ident_label = ident.get("label")
+            same_as = ident.get("sameAs") or ident.get("same_as") or []
+
+            # Primary ID
+            if isinstance(ident_id, str) and ident_id.startswith(
+                ("http://", "https://")
+            ):
+                lines.append(f"    dct:identifier <{ident_id}> ;")
+                ident_count += 1
+            elif isinstance(ident_id, str) and ident_id.strip():
+                lines.append(f'    dct:identifier "{ident_id.strip()}" ;')
+                ident_count += 1
+
+            # Label as additional identifier (your "both if both" rule)
+            if isinstance(ident_label, str) and ident_label.strip():
+                lines.append(f'    dct:identifier "{ident_label.strip()}" ;')
+                ident_count += 1
+
+            # sameAs links (URI only)
+            if isinstance(same_as, list):
+                for sa in same_as:
+                    if isinstance(sa, str) and sa.startswith(("http://", "https://")):
+                        lines.append(f"    owl:sameAs <{sa}> ;")
+                        sameas_count += 1
+
+        tracker.record(
+            field="dataset.identifiers",
+            source="MD.cff",
+            detail={
+                "dct:identifier_count": ident_count,
+                "owl:sameAs_count": sameas_count,
+            },
+            count_inc=ident_count,
+        )
 
     # Spatial / temporal if present
     spatial = getattr(cw, "spatial", None)
@@ -763,13 +832,23 @@ def crosswalk_to_rdf_turtle(
         detail={"publisher_id": cw.publisher_id},
     )
 
+    # Agent nodes for creators (source heuristic same as above)
+    agent_creators_source = "MD.cff"
+    try:
+        if cw.creators and any(
+            isinstance(cid, str) and "orcid.org" in cid for cid, _ in cw.creators
+        ):
+            agent_creators_source = "CITATION.cff"
+    except Exception:
+        pass
+
     for cid, clabel in cw.creators:
         lines.append(f"<{cid}> a schema:Person ;")
         lines.append(f'    schema:name "{clabel}" .')
         lines.append("")
         tracker.record(
             field="agent.creator",
-            source="MD.cff",
+            source=agent_creators_source,
             detail={"creator_id": cid, "creator_name": clabel},
         )
 
@@ -837,7 +916,14 @@ def crosswalk_to_rdf_turtle(
     # --------------------------------------------------
     # JSON provenance report (console + file)
     # --------------------------------------------------
-    report_path = Path.cwd() / "rdf_modelling_report.json"
+    out_dir = Path(info.get("output_dir", "output"))
+    try:
+        out_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        # fallback
+        out_dir = Path.cwd()
+
+    report_path = out_dir / "rdf_modelling_report.json"
     try:
         tracker.write_json(report_path)
         print(f"\n✔ JSON provenance report written: {report_path.resolve()}")
@@ -850,18 +936,12 @@ def crosswalk_to_rdf_turtle(
         keys = sorted(rep.get("summary", {}).keys())
         print(f"ℹ Provenance fields recorded: {len(keys)}")
         # show a few most relevant
-        for k in [k for k in keys if k.startswith("dataset.")][:8]:
+        for k in [k for k in keys if k.startswith("dataset.")][:10]:
             print(f"  - {k}: {', '.join(rep['summary'][k]['sources'])}")
         print(
             "  - citation.triples.used:",
             ", ".join(
                 rep["summary"].get("citation.triples.used", {}).get("sources", [])
-            ),
-        )
-        print(
-            "  - dataset.distributions:",
-            ", ".join(
-                rep["summary"].get("dataset.distributions", {}).get("sources", [])
             ),
         )
     except Exception:
