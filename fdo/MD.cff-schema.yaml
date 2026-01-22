@@ -1,0 +1,185 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://w3id.org/n4o/fdo/md-cff/schema/0.1"
+title: "MD.cff Schema"
+description: "Single-file specification for MD.cff (Metadata for FDO crosswalk), version 0.1"
+type: object
+additionalProperties: false
+
+required:
+  - md_cff_version
+  - fdo_type
+  - id
+  - title
+  - publisher
+
+properties:
+  md_cff_version:
+    type: string
+    const: "0.1"
+    description: "MD.cff schema version (this spec)."
+
+  fdo_type:
+    type: string
+    description: "Target FDO class."
+    enum:
+      - "fdo:SoftwareFDO"
+      - "fdo:AnalysisFDO"
+      - "fdo:3DDataFDO"
+
+  id:
+    type: string
+    description: "Global identifier for the described resource (prefer DOI/ARK/Handle/URL)."
+    minLength: 3
+
+  title:
+    type: string
+    minLength: 1
+
+  publisher:
+    $ref: "#/$defs/idLabelEntity"
+    description: "Publishing agent as {id,label} (e.g., Wikidata Q-ID URI, ROR, GND, URL)."
+
+  abstract:
+    type: string
+
+  version:
+    type: string
+    description: "Human-readable version of the described object (not schema version)."
+
+  date_released:
+    type: string
+    description: "Release/publication date (ISO 8601, YYYY-MM-DD)."
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+
+  keywords:
+    type: array
+    items:
+      type: string
+      minLength: 1
+
+  license:
+    description: "License identifier(s). Keep simple for v0.1."
+    oneOf:
+      - type: string
+        minLength: 1
+      - type: array
+        items:
+          type: string
+          minLength: 1
+
+  creators:
+    type: array
+    items:
+      $ref: "#/$defs/idLabelEntity"
+    description: "Primary creators/authors (use {id,label})."
+
+  contributors:
+    type: array
+    items:
+      $ref: "#/$defs/contributorRole"
+    description: "Contributors with roles."
+
+  identifiers:
+    type: array
+    items:
+      $ref: "#/$defs/typedIdentifier"
+    description: "Additional identifiers (e.g., DOI, URL, GitHub, ORCID)."
+
+  related_resources:
+    type: array
+    items:
+      $ref: "#/$defs/relatedResource"
+    description: "Links to related objects (papers, datasets, repos, etc.)."
+
+  # Reserved for later steps; not required for minimal example
+  distributions:
+    type: array
+    items:
+      $ref: "#/$defs/distribution"
+    description: "Optional distributions (files, downloads)."
+
+$defs:
+  idLabelEntity:
+    type: object
+    additionalProperties: false
+    required: [id, label]
+    properties:
+      id:
+        type: string
+        minLength: 1
+        description: "Resolvable identifier (URI/DOI/ORCID/ROR/etc.)."
+      label:
+        type: string
+        minLength: 1
+        description: "Human-readable label."
+
+  typedIdentifier:
+    type: object
+    additionalProperties: false
+    required: [scheme, value]
+    properties:
+      scheme:
+        type: string
+        enum: [doi, url, orcid, ror, handle, ark, isbn, issn, swhid, other]
+      value:
+        type: string
+        minLength: 1
+      label:
+        type: string
+
+  contributorRole:
+    type: object
+    additionalProperties: false
+    required: [agent, role]
+    properties:
+      agent:
+        $ref: "#/$defs/idLabelEntity"
+      role:
+        type: string
+        minLength: 1
+        description: "e.g., 'Data curator', 'Software', 'Investigation', 'Visualization'."
+
+  relatedResource:
+    type: object
+    additionalProperties: false
+    required: [relation, target]
+    properties:
+      relation:
+        type: string
+        enum:
+          - "isSupplementTo"
+          - "isReferencedBy"
+          - "references"
+          - "isPartOf"
+          - "hasPart"
+          - "isDerivedFrom"
+          - "isDocumentedBy"
+      target:
+        $ref: "#/$defs/idLabelEntity"
+      note:
+        type: string
+
+  distribution:
+    type: object
+    additionalProperties: false
+    required: [id, label]
+    properties:
+      id:
+        type: string
+        minLength: 1
+        description: "Resolvable location (URL/URI)."
+      label:
+        type: string
+        minLength: 1
+      media_type:
+        type: string
+      checksum:
+        type: object
+        additionalProperties: false
+        required: [algorithm, value]
+        properties:
+          algorithm:
+            type: string
+            enum: [md5, sha1, sha256, sha512]
+          value:
+            type: string
