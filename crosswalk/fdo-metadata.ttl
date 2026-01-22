@@ -1,0 +1,18 @@
+@prefix cff: <https://w3id.org/fdo-squirrel/cff/> .
+@prefix codemeta: <https://codemeta.github.io/terms/> .
+@prefix fdo: <https://w3id.org/fdo-squirrel/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+fdo:metadata codemeta:author [ cff:family-names "Thiery" ;
+            cff:given-names "Florian" ;
+            cff:orcid "https://orcid.org/0000-0002-3246-3531" ],
+        [ cff:family-names "Homburg" ;
+            cff:given-names "Timo" ;
+            cff:orcid "https://orcid.org/0000-0002-9499-5840" ] ;
+    codemeta:datePublished "2020-08-01" ;
+    codemeta:identifier "10.5281/zenodo.3969514" ;
+    codemeta:name "oghamextractor" ;
+    codemeta:softwareVersion 1e+00 ;
+    cff:cff-version "1.1.0" ;
+    cff:message "If you use this software, please cite it as below." .
+
