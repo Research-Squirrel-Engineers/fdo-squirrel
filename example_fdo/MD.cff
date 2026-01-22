@@ -1,0 +1,49 @@
+# ==========================================
+# MD.cff — FDO Metadata Core (v0.1)
+# ==========================================
+
+md_cff_version: "0.1"
+
+# required: one of the three fixed classes
+fdo_type: "fdo:3DDataFDO"
+
+# required: global identifier (prefer DOI URL; DOI alone is allowed by schema too,
+# but using the resolver URL is usually nicer for RDF later)
+id: "https://doi.org/10.5281/zenodo.1234567"
+
+title: "3D Ogham Stones Collection (South-West Ireland)"
+
+abstract: >
+  A curated collection of high-resolution 3D models of early medieval
+  Ogham stones from south-west Ireland, including associated metadata
+  and paradata.
+
+version: "1.0.0"
+
+date_released: "2025-01-05"
+
+# required: publisher as {id,label} (NOT a list)
+publisher:
+  id: "https://www.wikidata.org/entity/Q151991"
+  label: "Leibniz-Zentrum für Archäologie"
+
+license: "CC-BY-4.0"
+
+# keywords must be strings in v0.1
+keywords:
+  - "Ogham stones"
+  - "3D cultural heritage"
+
+identifiers:
+  - scheme: doi
+    value: "10.5281/zenodo.1234567"
+    label: "Zenodo DOI"
+
+related_resources:
+  - relation: "isDocumentedBy"
+    target:
+      id: "https://example.org/fdo/ogham-3d"
+      label: "Landing page"
+
+# NOTE: spatial/temporal/created/modified are intentionally omitted in v0.1 schema.
+# We can re-introduce them later via related_resources or a v0.2 schema extension.

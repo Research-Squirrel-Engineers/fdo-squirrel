@@ -1,0 +1,19 @@
+md_cff_version: "0.1"
+
+fdo_type: "fdo:SoftwareFDO"
+id: "https://doi.org/10.1234/example-doi"
+title: "Example Software FDO"
+
+publisher:
+  id: "https://www.wikidata.org/entity/Q123456"
+  label: "Example Publisher"
+
+creators:
+  - id: "https://orcid.org/0000-0002-0000-0000"
+    label: "Florian Thiery"
+
+abstract: "Minimal example for MD.cff schema validation."
+keywords:
+  - "FAIR"
+  - "FDO"
+license: "CC-BY-4.0"

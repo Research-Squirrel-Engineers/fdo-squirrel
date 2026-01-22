@@ -91,7 +91,6 @@ properties:
       $ref: "#/$defs/relatedResource"
     description: "Links to related objects (papers, datasets, repos, etc.)."
 
-  # Reserved for later steps; not required for minimal example
   distributions:
     type: array
     items:
@@ -137,7 +136,6 @@ $defs:
       role:
         type: string
         minLength: 1
-        description: "e.g., 'Data curator', 'Software', 'Investigation', 'Visualization'."
 
   relatedResource:
     type: object
@@ -167,7 +165,6 @@ $defs:
       id:
         type: string
         minLength: 1
-        description: "Resolvable location (URL/URI)."
       label:
         type: string
         minLength: 1
