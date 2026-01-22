@@ -1,0 +1,43 @@
+cwreference|wikidata|comment
+nav|P101|from Wikidata:Cradle~software
+nav|P1072|from Wikidata:Cradle~software
+nav|P1073|from Wikidata:Cradle~software
+publisher|P123|from CodeMeta CrossWalk
+codeRepository|P1324|from CodeMeta CrossWalk
+nav|P1343|from Wikidata:Cradle~software
+issueTracker|P1401|from CodeMeta CrossWalk
+nav|P144|from Wikidata:Cradle~software
+nav|P154|from Wikidata:Cradle~Software_Heritage_software_title
+softwareRequirements|P1547|from CodeMeta CrossWalk
+producer|P162|from CodeMeta CrossWalk
+nav|P166|from Wikidata:Cradle~software
+nav|P178|from Wikidata:Cradle~software
+nav|P18|from Wikidata:Cradle~Software_Heritage_software_title
+encodingFormat|P2701|from CodeMeta CrossWalk; they used fileFormat
+license|P275|from CodeMeta CrossWalk
+programmingLanguage|P277|from CodeMeta CrossWalk
+citation|P2860|from CodeMeta CrossWalk
+sameAs|P2888|from CodeMeta CrossWalk
+operatingSystem|P306|from CodeMeta CrossWalk
+softwareVersion|P348|from CodeMeta CrossWalk
+fileSize|P3575|from CodeMeta CrossWalk
+isPartOf|P361|from CodeMeta CrossWalk
+runtimePlatform|P400|from CodeMeta CrossWalk
+nav|P463|from Wikidata:Cradle~software
+nav|P485|from Wikidata:Cradle~software
+downloadUrl|P4945|from CodeMeta CrossWalk
+author|P50|from CodeMeta CrossWalk
+dateModified|P5017|from CodeMeta CrossWalk
+hasPart|P527|from CodeMeta CrossWalk
+dateCreated|P571|from CodeMeta CrossWalk
+datePublished|P577|from CodeMeta CrossWalk
+nav|P734|from CodeMeta CrossWalk; subtype of maintainer, publisher, author, contributor
+nav|P735|from CodeMeta CrossWalk; subtype of maintainer, publisher, author, contributor
+contributor|P767|from CodeMeta CrossWalk
+nav|P800|from Wikidata:Cradle~software
+url|P856|from CodeMeta CrossWalk
+funder|P859|from CodeMeta CrossWalk
+keywords|P921|from CodeMeta CrossWalk
+nav|P968|from CodeMeta CrossWalk; subtype of maintainer, publisher, author, contributor
+nav|P973|from Wikidata:Cradle~software
+editor|P98|from CodeMeta CrossWalk

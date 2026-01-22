@@ -1,0 +1,74 @@
+schemaorg|range|description|comment|codemeta
+applicationCategory|Text or URL|Type of software application, e.g. 'Game, Multimedia'.|In Codemeta also used for SoftwareSourceCode|yes
+applicationSubCategory|Text or URL|Subcategory of the application, e.g. 'Arcade Game'.|In Codemeta also used for SoftwareSourceCode|yes
+applicationSuite|Text|The name of the application suite to which the application belongs (e.g. Excel belongs to Office).|Not in Codemeta|no
+author|Organization or Person|The author of this content or rating. Please note that author is special in that HTML 5 provides a special mechanism for indicating authorship via the rel tag. That is equivalent to this and may be used interchangeably.||yes
+availableOnDevice|Text|Device required to run the application. Used in cases where a specific make/model is required to run the application. Supersedes device.|Not in Codemeta|no
+citation|CreativeWork or URL|A citation or reference to another creative work, such as another publication, web page, scholarly article, etc.||yes
+citation|ScholarlyArticle|An academic publication related to the software.|v2, v3|referencePublication
+codeRepository|URL|Link to the repository where the un-compiled, human readable code and related code is located (SVN, GitHub, CodePlex, institutional GitLab instance, etc.).|In Codemeta also used for SoftwareApplication|yes
+codeSampleType|Text|What type of code sample: full (compile ready) solution, code snippet, inline code, scripts, template. Supersedes sampleType.|Not in CodeMeta|no
+contributor|Organization or Person|A secondary contributor to the CreativeWork or Event.||yes
+copyrightHolder|Organization or Person|The party holding the legal copyright to the CreativeWork.||yes
+copyrightYear|Number|The year during which the claimed copyright for the CreativeWork was first asserted.||yes
+countriesNotSupported|Text|Countries for which the application is not supported. You can also provide the two-letter ISO 3166-1 alpha-2 country code.|Not in Codemeta|no
+countriesSupported|Text|Countries for which the application is supported. You can also provide the two-letter ISO 3166-1 alpha-2 country code.|Not in Codemeta|no
+dateCreated|Date|The date on which the CreativeWork was created or the item was added to a DataFeed.||yes
+dateModified|Date|The date on which the CreativeWork was most recently modified or when the item's entry was modified within a DataFeed.||yes
+datePublished|Date|Date of first broadcast/publication.||yes
+description|Text|A description of the item.||yes
+downloadUrl|URL|If the file can be downloaded, URL to download the binary.|In Codemeta also used for SoftwareSourceCode|yes
+editor|Person|Specifies the Person who edited the CreativeWork.||yes
+encoding|MediaObject|A media object that encodes this CreativeWork. This property is a synonym for associatedMedia. Supersedes encodings.||yes
+encodingFormat|Text or URL|"Media type, typically MIME format (see IANA site) of the content e.g. application/zip of a SoftwareApplication binary. In cases where a CreativeWork has several media type representations, 'encoding' can be used to indicate each MediaObject alongside particular fileFormat information. Unregistered or niche file formats can be indicated instead via the most appropriate URL, e.g. defining Web page or a Wikipedia entry.
+Supersedes fileFormat."|Codemeta uses fileFormat which is superseeded by encodingFormat|encodingFormat
+featureList|Text or URL|Features or modules provided by this application (and possibly required by other applications).|Not in Codemeta|no
+fileSize|Text|Size of the application / package (e.g. 18MB). In the absence of a unit (MB, KB etc.), KB will be assumed.|In Codemeta also used for SoftwareSourceCode|yes
+funder|Organization or Person|A person or organization that supports (sponsors) something through some kind of financial contribution.||yes
+funding|Text|Funding source (e.g. specific grant)|v2, v3|yes
+hasPart|CreativeWork|Indicates a CreativeWork that is (in some sense) a part of this CreativeWork. Reverse property isPartOf||yes
+identifier|PropertyValue or URL|The identifier property represents any kind of identifier for any kind of Thing, such as ISBNs, GTIN codes, UUIDs etc. Schema.org provides dedicated properties for representing many of these, either as textual strings or as URL (URI) links. See background notes for more details.||yes
+installUrl|URL|URL at which the app may be installed, if different from the URL of the item.|In Codemeta also used for SoftwareSourceCode|yes
+isAccessibleForFree|Boolean|A flag to signal that the publication is accessible for free.||yes
+isPartOf|CreativeWork|Indicates a CreativeWork that this CreativeWork is (in some sense) part of. Reverse property hasPart||yes
+keywords|Text|Keywords or tags used to describe this content. Multiple entries in a keywords list are typically delimited by commas.||yes
+license|CreativeWork or URL|A license document that applies to this content, typically indicated by URL.||yes
+maintainer|Person|Individual responsible for maintaining the software (usually includes an email contact address)|v2, v3|yes
+memoryRequirements|Text or URL|Minimum memory requirements.|In Codemeta also used for SoftwareSourceCode|yes
+name|Text|The name of the item (software, Organization)||yes
+operatingSystem|Text|Operating systems supported (Windows 7, OSX 10.6, Android 1.6).|In Codemeta also used for SoftwareSourceCode|yes
+permissions|Text|Permission(s) required to run the app (for example, a mobile app may require full internet access or may run only on wifi).|In Codemeta also used for SoftwareSourceCode|yes
+position|Integer or Text|The position of an item in a series or sequence of items. (While schema.org considers this a property of CreativeWork, it is also the way to indicate ordering in any list (e.g. the Authors list). By default arrays are unordered in JSON-LD||yes
+processorRequirements|Text|Processor architecture required to run the application (e.g. IA64).|In Codemeta also used for SoftwareSourceCode|yes
+producer|Organization or Person|The person or organization who produced the work (e.g. music album, movie, tv/radio series etc.).||yes
+programmingLanguage|ComputerLanguage or Text|The computer programming language.|In Codemeta also used for SoftwareApplication|yes
+provider|Organization or Person|The service provider, service operator, or service performer; the goods producer. Another party (a seller) may offer those services or goods on behalf of the provider. A provider may also serve as the seller. Supersedes carrier.||yes
+publisher|Organization or Person|The publisher of the creative work.||yes
+relatedLink|URL|A link related to this object, e.g. related web pages||yes
+releaseNotes|Text or URL|Description of what changed in this version.|In Codemeta also used for SoftwareSourceCode|yes
+review|Review|A review of the item.||yes
+runtimePlatform|Text|Runtime platform or script interpreter dependencies (Example - Java v1, Python2.3, .Net Framework 3.0). Supersedes runtime.|In Codemeta also used for SoftwareApplication|yes
+sameAs|URL|URL of a reference Web page that unambiguously indicates the item's identity. E.g. the URL of the item's Wikipedia page, Wikidata entry, or official website.||yes
+screenshot|"ImageObject or 
+URL"|A link to a screenshot image of the app.|Not in Codemeta|no
+softwareAddOn|SoftwareApplication|Additional content for a software application.|Not in Codemeta|no
+softwareHelp|CreativeWork|Software application help.|In Codemeta also used for SoftwareSourceCode|yes
+softwareRequirements|SoftwareSourceCode|Required software dependencies|In Codemeta also used for SoftwareSourceCode|yes
+softwareVersion|Text|Version of the software instance.|In Codemeta also used for SoftwareSourceCode|yes
+sponsor|Organization or Person|A person or organization that supports a thing through a pledge, promise, or financial contribution. e.g. a sponsor of a Medical Study or a corporate sponsor of an event.||yes
+status|Text|Description of development status, e.g. Active, inactive, suspended. See repostatus.org|v2, v3|developmentStatus
+storageRequirements|Text or URL|Storage requirements (free space required).|In Codemeta also used for SoftwareSourceCode|yes
+supportingData|DataFeed|Supporting data for a SoftwareApplication.|In Codemeta also used for SoftwareSourceCode|yes
+targetProduct|SoftwareApplication|Target Operating System / Product to which the code applies. If applies to several versions, just the product name can be used.|In Codemeta also used for SoftwareApplication|yes
+url|URL|URL of the item.||yes
+version|Number or Text|The version of the CreativeWork embodied by a specified resource.||yes
+nav|URL|link to installation instructions/documentation|v2, v3|buildInstructions
+nav|URL|link to continuous integration service|v2|contIntegration
+nav|URL|link to continuous integration service|v3|continuousIntegration
+nav|Date|Software may be embargoed from public access until a specified date (e.g. pending publication, 1 year from publication)|v2|embargoDate
+nav|Date|Software may be embargoed from public access until a specified date (e.g. pending publication, 1 year from publication)|v3|embargoEndDate
+nav|SoftwareSourceCode|Link that states where the software code is for a given software. For example a software registry may indicate that one of its software entries hasSourceCode in a GitHub repository.|v3|hasSourceCode
+nav|SoftwareApplication|Link that states where software application is built from a given source code. This is the reverse property of 'hasSourceCode'.|v3|isSourceCodeOf
+nav|URL|link to software bug reporting or issue tracking system|v2, v3|issueTracker
+nav|URL|link to software Readme file|v2, v3|readme
+nav|SoftwareSourceCode|Optional dependencies , e.g. for optional features, code development, etc.|v2, v3|softwareSuggestions

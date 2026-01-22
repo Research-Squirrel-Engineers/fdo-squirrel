@@ -1,0 +1,29 @@
+cwreference|cff|comment
+description|abstract|
+author|authors|Person in CFF has similar properties like a schema.org person
+nav|cff-version|
+nav|commit|
+maintainer|contact|Person in CFF has similar properties like a schema.org person
+contributor|contributors|From version 1.3.0
+datePublished|date-released|
+nav|doi|
+identifier|doi or identifiers|"definition.identifiers are typed tuples (type, value, description) where type is one of doi, url, swh, string;
+
+From version 1.3.0, the typed identifier tuples also include relation."
+keywords|keywords|
+license|license or license-url|license: "When there are multiple licenses, it is assumed their relationship is OR, not AND."
+nav|license-url|
+nav|message|
+referencePublication|preferred-citation|
+citation|preferred-citation|
+nav|references|
+url|reposirotry or url|
+nav|repository|
+downloadUrl|repository-artifact|
+nav|repository-artifact|
+codeRepository|repository-code|
+name|title|
+nav|type|
+relatedLink|url|
+softwareVersion|version|
+version|version|
