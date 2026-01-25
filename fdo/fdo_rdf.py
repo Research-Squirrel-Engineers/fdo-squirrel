@@ -901,8 +901,7 @@ def crosswalk_to_rdf_turtle(
         )
 
     # ---------- Core dataset block ----------
-    lines.append(f"{subj} a dcat:Dataset,")
-    lines.append(f"        {cw.fdo_type} ;")
+    lines.append(f"{subj} a dcat:Dataset, crmdig:D1, crm:E73, {cw.fdo_type} ;")
 
     # Optional MD.cff fields (use getattr so it doesn't crash if absent)
     created = getattr(cw, "created", None)
@@ -1241,7 +1240,7 @@ def crosswalk_to_rdf_turtle(
 
         access_url = f"<urn:fdo-squirrel:content/{quote(name, safe='')}>"
 
-        lines.append(f"{dist_uri} a dcat:Distribution ;")
+        lines.append(f"{dist_uri} a dcat:Distribution, crmdig:D9 ;")
         lines.append(f"    dcat:accessURL {access_url} ;")
         if isinstance(size, int):
             lines.append(f"    dcat:byteSize {size} ;")
