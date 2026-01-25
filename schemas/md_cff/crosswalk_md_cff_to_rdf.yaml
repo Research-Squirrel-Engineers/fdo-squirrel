@@ -1,0 +1,208 @@
+version: "0.1"
+description: "Crosswalk from MD.cff to RDF (DCAT/DCT + GeoSPARQL + CodeMeta + FDO)"
+
+prefixes:
+  rdf: "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  rdfs: "http://www.w3.org/2000/01/rdf-schema#"
+  dct: "http://purl.org/dc/terms/"
+  dcat: "http://www.w3.org/ns/dcat#"
+  schema: "https://schema.org/"
+  codemeta: "https://codemeta.github.io/terms/"
+  geosparql: "http://www.opengis.net/ont/geosparql#"
+  sf: "http://www.opengis.net/ont/sf#"
+  fdo: "https://w3id.org/fdo#"
+
+rules:
+  # Generic object handler: prefer IRI from 'id'; attach rdfs:label if present
+  object_id_label:
+    iri_key: "id"
+    label_key: "label"
+    label_predicate: "rdfs:label"
+
+  # Optional IRI emission (only if value looks like an IRI)
+  iri_optional:
+    emit_if_iri: true
+
+handlers:
+  # --- GeoSPARQL geometry node ---
+  geosparql_geometry:
+    description: "Create geometry node with CRS-prefixed WKT and sf:* type"
+    steps:
+      - create_node: "{subject}_geom"
+      - triple:
+          s: "{subject}"
+          p: "geosparql:hasGeometry"
+          o: "{node}"
+      - infer_sf_type_from_wkt: true # POINT -> sf:Point, POLYGON -> sf:Polygon, etc.
+      - triple:
+          s: "{node}"
+          p: "geosparql:asWKT"
+          o_datatype: "geosparql:wktLiteral"
+          o_value: "<http://www.opengis.net/def/crs/EPSG/0/4326> {wkt}"
+
+  # --- Temporal node with dcat:startDate/endDate ---
+  temporal_node:
+    description: "Create temporal node and attach start/end dates"
+    steps:
+      - create_node:
+          iri_from: "id" # use IRI if provided; else blank node
+      - triple:
+          s: "{subject}"
+          p: "dct:temporal"
+          o: "{node}"
+      - if_present:
+          key: "label"
+          do:
+            - triple:
+                s: "{node}"
+                p: "rdfs:label"
+                o: "{label}"
+      - if_present:
+          key: "start"
+          do:
+            - triple:
+                s: "{node}"
+                p: "dcat:startDate"
+                o: "{start}"
+      - if_present:
+          key: "end"
+          do:
+            - triple:
+                s: "{node}"
+                p: "dcat:endDate"
+                o: "{end}"
+
+mappings:
+  # ---------------- Core / Identity ----------------
+  fdo_type:
+    predicate: "rdf:type"
+    value_type: "curie_or_iri"
+
+  title:
+    predicate: "dct:title"
+    value_type: "literal"
+
+  description:
+    predicate: "dct:description"
+    value_type: "literal"
+
+  version:
+    predicate: "schema:version"
+    value_type: "literal"
+
+  date_created:
+    predicate: "dct:created"
+    value_type: "literal_date"
+
+  date_released:
+    predicate: "dct:issued"
+    value_type: "literal_date"
+
+  date_modified:
+    predicate: "dct:modified"
+    value_type: "literal_date"
+    multiple: true
+
+  funding:
+    predicate: "schema:funding"
+    value_type: "literal_or_object"
+    multiple: true
+
+  # ---------------- Agents ----------------
+  publishers:
+    predicate: "dct:publisher"
+    value_type: "object_id_label"
+    multiple: true
+
+  creators:
+    predicate: "dct:creator"
+    value_type: "object_id_label"
+    multiple: true
+
+  contributors:
+    predicate: "dct:contributor"
+    value_type: "object_id_label"
+    multiple: true
+
+  # ---------------- License ----------------
+  license:
+    predicate: "dct:license"
+    value_type: "object_id_label"
+
+  # ---------------- Keywords / Subjects ----------------
+  keywords:
+    multiple: true
+    emit:
+      - predicate: "dcat:keyword"
+        from: "label"
+        value_type: "literal"
+      - predicate: "dct:subject"
+        from: "id"
+        value_type: "iri_optional"
+
+  # ---------------- Related Resources ----------------
+  related_resources:
+    multiple: true
+    emit:
+      - predicate: "dct:relation"
+        from: "target"
+        value_type: "object_id_label"
+
+  # ---------------- Spatial ----------------
+  spatial:
+    emit:
+      - predicate: "dct:spatial"
+        from: "id"
+        value_type: "iri_optional"
+      - predicate: "dcat:bbox"
+        from: "bounding_box"
+        value_type: "literal" # "west,south,east,north"
+      - handler: "geosparql_geometry"
+        from: "wkt"
+
+  # ---------------- Temporal ----------------
+  temporal:
+    handler: "temporal_node"
+
+  # ---------------- Heritage Object ----------------
+  heritage_object.context:
+    predicate: "fdo:context"
+    value_type: "literal"
+
+  heritage_object.object_type:
+    predicate: "dct:type"
+    value_type: "object_id_label"
+
+  heritage_object.monument:
+    predicate: "dct:subject"
+    value_type: "object_id_label"
+
+  heritage_object.material:
+    predicate: "dct:subject"
+    value_type: "object_id_label"
+
+  heritage_object.documentation_purpose:
+    predicate: "dct:description"
+    value_type: "literal"
+
+  heritage_object.overall_condition:
+    predicate: "dct:description"
+    value_type: "literal"
+
+  heritage_object.conservation_urgency:
+    predicate: "dct:description"
+    value_type: "literal"
+
+  # ---------------- Technique ----------------
+  technique.processing:
+    predicate: "dct:provenance"
+    value_type: "literal_or_object"
+
+  technique.programming_languages:
+    predicate: "codemeta:programmingLanguage"
+    value_type: "literal"
+    multiple: true
+
+  technique.repository.url:
+    predicate: "codemeta:codeRepository"
+    value_type: "iri"

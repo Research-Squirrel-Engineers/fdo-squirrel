@@ -3,6 +3,10 @@
 @prefix fdo: <https://w3id.org/fdo-squirrel/> .
 @prefix schema: <https://schema.org/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix geosparql: <http://www.opengis.net/ont/geosparql#> .
+@prefix sf: <http://www.opengis.net/ont/sf#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix codemeta: <https://codemeta.github.io/terms/> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -10,21 +14,69 @@
 @prefix wd: <http://www.wikidata.org/entity/> .
 @prefix wdt: <http://www.wikidata.org/prop/direct/> .
 
-<https://doi.org/10.5281/zenodo.1234567> a dcat:Dataset,
+<https://doi.org/10.1234/fdo.demo.3d.001> a dcat:Dataset,
         fdo:3DDataFDO ;
+    dct:description "Demo FDO package containing 3D data and minimal heritage context metadata for testing RDF generation and SPARQL queries in a ZIP-contained workflow." ;
+    dct:hasVersion "0.1.0" ;
     dct:creator <https://orcid.org/0000-0002-3246-3531> ;
-    dct:publisher <https://www.wikidata.org/entity/Q151991> ;
-    dct:title "3D Ogham Stones Collection (South-West Ireland)" ;
+    dct:license <https://spdx.org/licenses/CC-BY-4.0.html> ;
+    dct:publisher <https://ror.org/03yrm5c26> ;
+    dct:title "Demo 3D Dataset – Example Object" ;
+    dcat:keyword <http://www.wikidata.org/entity/Q229370>,
+        "3D",
+        <http://www.wikidata.org/entity/Q110840>,
+        "Cultural Heritage",
+        <http://www.wikidata.org/entity/Q28923983>,
+        "FAIR Digital Object",
+        <http://www.wikidata.org/entity/Q55303090>,
+        "GeoSPARQL" ;
+    dct:subject <http://www.wikidata.org/entity/Q229370>,
+        "3D",
+        <http://www.wikidata.org/entity/Q110840>,
+        "Cultural Heritage",
+        <http://www.wikidata.org/entity/Q28923983>,
+        "FAIR Digital Object",
+        <http://www.wikidata.org/entity/Q55303090>,
+        "GeoSPARQL" ;
     dcat:distribution <urn:fdo-squirrel:dist/498bba116bd074fa>,
         <urn:fdo-squirrel:dist/b5625ea2fcb29014>,
         <urn:fdo-squirrel:dist/26ed9cc07957fcf2>,
         <urn:fdo-squirrel:dist/90de5630c77d77bc>,
         <urn:fdo-squirrel:dist/cdb0cfb8777d33e0>,
         <urn:fdo-squirrel:dist/252cccf77d6b7f0e>,
-        <urn:fdo-squirrel:dist/1616223928d210ca>  .
+        <urn:fdo-squirrel:dist/615f38eb9e3080c1> ;
+    dct:created "2026-01-20"^^xsd:date ;
+    dct:issued "2026-01-25"^^xsd:date ;
+    dct:modified "2026-01-22"^^xsd:date ;
+    dct:modified "2026-01-25"^^xsd:date ;
+    schema:funding "Internal prototype development (NFDI4Objects context)" ;
+    dct:contributor <https://orcid.org/0000-0000-0000-0000> ;
+    dct:spatial <http://www.wikidata.org/entity/Q215905> ;
+    dcat:bbox "6.3000,50.1000,7.2000,50.9000" ;
+    schema:latitude "50.33"^^xsd:decimal ;
+    schema:longitude "6.95"^^xsd:decimal ;
+    fdo:context "Synthetic demo context for pipeline testing (not authoritative)." ;
+    dct:type <http://www.wikidata.org/entity/Q839954> ;
+    dct:subject <http://www.wikidata.org/entity/Q4989906> ;
+    dct:subject <http://www.wikidata.org/entity/Q11472> ;
+    dct:description "Demonstrate packaging and RDF mapping of 3D data in a ZIP-contained FDO." ;
+    dct:description "stable" ;
+    dct:description "low" ;
+    dct:provenance "{"notes": "Processing metadata for provenance; demo only.", "software": "Meshroom 2023.1 (demo)", "workflow": "SfM → dense cloud → mesh → texture"}" ;
+    codemeta:programmingLanguage "Python" ;
+    codemeta:codeRepository <https://github.com/example/fdo-demo-3d>  .
 
-<https://www.wikidata.org/entity/Q151991> a schema:Organization ;
-    schema:name "Leibniz-Zentrum für Archäologie" .
+<https://doi.org/10.1234/fdo.demo.3d.001> geosparql:hasGeometry <https://doi.org/10.1234/fdo.demo.3d.001_geom> .
+<https://doi.org/10.1234/fdo.demo.3d.001_geom> a sf:Point .
+<https://doi.org/10.1234/fdo.demo.3d.001_geom> geosparql:asWKT "<http://www.opengis.net/def/crs/EPSG/0/4326> POINT(6.9500 50.3300)"^^geosparql:wktLiteral .
+<https://doi.org/10.1234/fdo.demo.3d.001> dct:temporal <https://doi.org/10.1234/fdo.demo.3d.001_temporal> .
+<https://doi.org/10.1234/fdo.demo.3d.001_temporal> a dct:PeriodOfTime .
+<https://doi.org/10.1234/fdo.demo.3d.001_temporal> rdfs:label "Late Roman period" .
+<https://doi.org/10.1234/fdo.demo.3d.001_temporal> dcat:startDate "-300"^^xsd:integer .
+<https://doi.org/10.1234/fdo.demo.3d.001_temporal> dcat:endDate "640"^^xsd:integer .
+
+<https://ror.org/03yrm5c26> a schema:Organization ;
+    schema:name "LEIZA – Leibniz-Zentrum für Archäologie" .
 
 <https://orcid.org/0000-0002-3246-3531> a schema:Person ;
     schema:name "Florian Thiery" .
@@ -77,41 +129,43 @@
     fdo:role "model" ;
     fdo:sha256 "252cccf77d6b7f0e8fd1054067140594ca1d78eca9b74cd7a9a8ff809018e7f1"  .
 
-<urn:fdo-squirrel:dist/1616223928d210ca> a dcat:Distribution ;
+<urn:fdo-squirrel:dist/615f38eb9e3080c1> a dcat:Distribution ;
     dcat:accessURL <urn:fdo-squirrel:content/MD.cff> ;
-    dcat:byteSize 1291 ;
+    dcat:byteSize 3227 ;
     dcat:mediaType "text/yaml" ;
     fdo:path "MD.cff" ;
     fdo:role "data" ;
-    fdo:sha256 "1616223928d210ca01617a4c8ad16c315d94608502b0864e4317a9213b966549"  .
+    fdo:sha256 "615f38eb9e3080c1a6d013540c596664a5b75d4885394c2ccf23839b4ee4a7a9"  .
 
-<https://doi.org/10.5281/zenodo.1234567> cff:keywords "3d" .
-<https://doi.org/10.5281/zenodo.1234567> cff:keywords "archaeology" .
-<https://doi.org/10.5281/zenodo.1234567> cff:keywords "ogham" .
-<https://doi.org/10.5281/zenodo.1234567> cff:license "MIT" .
-<https://doi.org/10.5281/zenodo.1234567> cff:license <https://spdx.org/licenses/MIT.html> .
-<https://doi.org/10.5281/zenodo.1234567> cff:license-url "MIT" .
-<https://doi.org/10.5281/zenodo.1234567> cff:license-url <https://spdx.org/licenses/MIT.html> .
-<https://doi.org/10.5281/zenodo.1234567> codemeta:keywords "3d" .
-<https://doi.org/10.5281/zenodo.1234567> codemeta:keywords "archaeology" .
-<https://doi.org/10.5281/zenodo.1234567> codemeta:keywords "ogham" .
-<https://doi.org/10.5281/zenodo.1234567> codemeta:license "MIT" .
-<https://doi.org/10.5281/zenodo.1234567> codemeta:license <https://spdx.org/licenses/MIT.html> .
-<https://doi.org/10.5281/zenodo.1234567> dcat:keyword "3d" .
-<https://doi.org/10.5281/zenodo.1234567> dcat:keyword "archaeology" .
-<https://doi.org/10.5281/zenodo.1234567> dcat:keyword "ogham" .
-<https://doi.org/10.5281/zenodo.1234567> dct:license <https://spdx.org/licenses/MIT.html> .
-<https://doi.org/10.5281/zenodo.1234567> dct:subject "3d" .
-<https://doi.org/10.5281/zenodo.1234567> dct:subject "archaeology" .
-<https://doi.org/10.5281/zenodo.1234567> dct:subject "ogham" .
-<https://doi.org/10.5281/zenodo.1234567> schema:codeRepository <https://github.com/example/ogham3d-toolkit> .
-<https://doi.org/10.5281/zenodo.1234567> schema:keywords "3d" .
-<https://doi.org/10.5281/zenodo.1234567> schema:keywords "archaeology" .
-<https://doi.org/10.5281/zenodo.1234567> schema:keywords "ogham" .
-<https://doi.org/10.5281/zenodo.1234567> schema:license "MIT" .
-<https://doi.org/10.5281/zenodo.1234567> schema:license <https://spdx.org/licenses/MIT.html> .
-<https://doi.org/10.5281/zenodo.1234567> wdt:P275 "MIT" .
-<https://doi.org/10.5281/zenodo.1234567> wdt:P275 <https://spdx.org/licenses/MIT.html> .
-<https://doi.org/10.5281/zenodo.1234567> wdt:P921 "3d" .
-<https://doi.org/10.5281/zenodo.1234567> wdt:P921 "archaeology" .
-<https://doi.org/10.5281/zenodo.1234567> wdt:P921 "ogham" .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:keywords "3d" .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:keywords "archaeology" .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:keywords "ogham" .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:license "MIT" .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:license <https://spdx.org/licenses/MIT.html> .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:license-url "MIT" .
+<https://doi.org/10.1234/fdo.demo.3d.001> cff:license-url <https://spdx.org/licenses/MIT.html> .
+<https://doi.org/10.1234/fdo.demo.3d.001> codemeta:keywords "3d" .
+<https://doi.org/10.1234/fdo.demo.3d.001> codemeta:keywords "archaeology" .
+<https://doi.org/10.1234/fdo.demo.3d.001> codemeta:keywords "ogham" .
+<https://doi.org/10.1234/fdo.demo.3d.001> codemeta:license "MIT" .
+<https://doi.org/10.1234/fdo.demo.3d.001> codemeta:license <https://spdx.org/licenses/MIT.html> .
+<https://doi.org/10.1234/fdo.demo.3d.001> dcat:keyword "3d" .
+<https://doi.org/10.1234/fdo.demo.3d.001> dcat:keyword "archaeology" .
+<https://doi.org/10.1234/fdo.demo.3d.001> dcat:keyword "ogham" .
+<https://doi.org/10.1234/fdo.demo.3d.001> dct:license <https://spdx.org/licenses/MIT.html> .
+<https://doi.org/10.1234/fdo.demo.3d.001> dct:subject "3d" .
+<https://doi.org/10.1234/fdo.demo.3d.001> dct:subject "archaeology" .
+<https://doi.org/10.1234/fdo.demo.3d.001> dct:subject "ogham" .
+<https://doi.org/10.1234/fdo.demo.3d.001> schema:codeRepository <https://github.com/example/ogham3d-toolkit> .
+<https://doi.org/10.1234/fdo.demo.3d.001> schema:keywords "3d" .
+<https://doi.org/10.1234/fdo.demo.3d.001> schema:keywords "archaeology" .
+<https://doi.org/10.1234/fdo.demo.3d.001> schema:keywords "ogham" .
+<https://doi.org/10.1234/fdo.demo.3d.001> schema:license "MIT" .
+<https://doi.org/10.1234/fdo.demo.3d.001> schema:license <https://spdx.org/licenses/MIT.html> .
+<https://doi.org/10.1234/fdo.demo.3d.001> wdt:P275 "MIT" .
+<https://doi.org/10.1234/fdo.demo.3d.001> wdt:P275 <https://spdx.org/licenses/MIT.html> .
+<https://doi.org/10.1234/fdo.demo.3d.001> wdt:P921 "3d" .
+<https://doi.org/10.1234/fdo.demo.3d.001> wdt:P921 "archaeology" .
+<https://doi.org/10.1234/fdo.demo.3d.001> wdt:P921 "ogham" .
+
+<https://spdx.org/licenses/CC-BY-4.0.html> rdfs:label "CC-BY-4.0" .

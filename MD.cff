@@ -1,0 +1,104 @@
+md_cff_version: "0.1"
+fdo_type: "fdo:3DDataFDO"
+
+id: "https://doi.org/10.1234/fdo.demo.3d.001"
+title: "Demo 3D Dataset – Example Object"
+description: "Demo FDO package containing 3D data and minimal heritage context metadata for testing RDF generation and SPARQL queries in a ZIP-contained workflow."
+
+version: "0.1.0"
+
+date_created: "2026-01-20"
+date_released: "2026-01-25"
+date_modified:
+  - "2026-01-22"
+  - "2026-01-25"
+
+funding:
+  - "Internal prototype development (NFDI4Objects context)"
+
+license:
+  label: "CC-BY-4.0"
+  id: "https://spdx.org/licenses/CC-BY-4.0.html"
+
+publishers:
+  - label: "LEIZA – Leibniz-Zentrum für Archäologie"
+    id: "https://ror.org/03yrm5c26"
+  - label: "Research Squirrel Engineers Network"
+    id: "https://github.com/Research-Squirrel-Engineers"
+
+creators:
+  - label: "Florian Thiery"
+    id: "https://orcid.org/0000-0002-3246-3531"
+
+contributors:
+  - label: "Fiona Schenk"
+    id: "https://orcid.org/0000-0000-0000-0000"
+
+keywords:
+  - label: "3D"
+    id: "http://www.wikidata.org/entity/Q229370"
+  - label: "Cultural Heritage"
+    id: "http://www.wikidata.org/entity/Q110840"
+  - label: "FAIR Digital Object"
+    id: "http://www.wikidata.org/entity/Q28923983"
+  - label: "GeoSPARQL"
+    id: "http://www.wikidata.org/entity/Q55303090"
+
+related_resources:
+  - relation: "isDocumentedBy"
+    target:
+      label: "Project documentation page"
+      id: "https://example.org/docs/fdo-demo-3d-001"
+  - relation: "isPartOf"
+    target:
+      label: "Demo collection"
+      id: "https://example.org/collection/fdo-demo"
+
+spatial:
+  label: "Eifel region (Germany)"
+  id: "http://www.wikidata.org/entity/Q215905"
+  # Option B: DCAT bbox literal as "west,south,east,north"
+  bounding_box: "6.3000,50.1000,7.2000,50.9000"
+  # WKT (will become GeoSPARQL geometry node with CRS prefix in RDF)
+  wkt: "POINT(6.9500 50.3300)"
+  lon: 6.95
+  lat: 50.33
+
+temporal:
+  label: "Late Roman period"
+  id: "http://www.wikidata.org/entity/Q170347"
+  start: -300
+  end: 640
+  range: [-300, 640]
+
+heritage_object:
+  object_type:
+    label: "Archaeological site"
+    id: "http://www.wikidata.org/entity/Q839954"
+  monument:
+    label: "Example monument"
+    id: "http://www.wikidata.org/entity/Q4989906"
+  material:
+    label: "Stone"
+    id: "http://www.wikidata.org/entity/Q11472"
+  context: "Synthetic demo context for pipeline testing (not authoritative)."
+  documentation_purpose: "Demonstrate packaging and RDF mapping of 3D data in a ZIP-contained FDO."
+  overall_condition: "stable"
+  conservation_urgency: "low"
+
+technique:
+  acquisition:
+    method: "Structure-from-Motion photogrammetry"
+    hardware: "DSLR + fixed lens (demo)"
+    images_count: "120 total; 110 aligned; JPEG; GSD ~2 mm"
+  processing:
+    software: "Meshroom 2023.1 (demo)"
+    workflow: "SfM → dense cloud → mesh → texture"
+    notes: "Processing metadata for provenance; demo only."
+  # Optional even for 3D (safe to keep; ignored if your pipeline doesn't map it yet)
+  programming_languages:
+    - "Python"
+  repository:
+    type: "git"
+    url: "https://github.com/example/fdo-demo-3d"
+    development_status: "active"

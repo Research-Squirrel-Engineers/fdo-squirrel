@@ -194,10 +194,335 @@ def _media_type(
     return mt
 
 
-def _spdx_url(license_id: str) -> Optional[str]:
-    if not license_id:
+# --------------------------------------------------
+# Mapping-driven MD.cff -> RDF emitter
+# --------------------------------------------------
+
+
+def _find_md_cff_crosswalk_file() -> Path:
+    """Locate schema/md_cff/crosswalk_md_cff_to_rdf.yaml relative to repository."""
+    base = Path(__file__).resolve().parent  # .../fdo
+    candidates = [
+        base.parent / "schema" / "md_cff" / "crosswalk_md_cff_to_rdf.yaml",
+        base.parent / "schemas" / "md_cff" / "crosswalk_md_cff_to_rdf.yaml",
+        base / "schema" / "md_cff" / "crosswalk_md_cff_to_rdf.yaml",
+        base / "schemas" / "md_cff" / "crosswalk_md_cff_to_rdf.yaml",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    raise FileNotFoundError(
+        "crosswalk_md_cff_to_rdf.yaml not found in schema/md_cff/ (or schemas/md_cff/)."
+    )
+
+
+def _load_md_cff_crosswalk() -> Dict[str, Any]:
+    p = _find_md_cff_crosswalk_file()
+    return yaml.safe_load(p.read_text(encoding="utf-8"))
+
+
+def _md_get(root: Any, key: str) -> Any:
+    """Resolve dotted-path keys into nested dicts."""
+    cur = root
+    for part in key.split("."):
+        if cur is None:
+            return None
+        if isinstance(cur, dict):
+            cur = cur.get(part)
+        else:
+            cur = getattr(cur, part, None)
+    return cur
+
+
+def _ttl_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '"').replace("\n", "\\n")
+
+
+def _ttl_lit(value: Any, datatype: Optional[str] = None) -> str:
+    if value is None:
+        return '""'
+    if isinstance(value, bool):
+        return ('"true"' if value else '"false"') + "^^xsd:boolean"
+    if isinstance(value, int):
+        return f'"{value}"^^xsd:integer'
+    if isinstance(value, float):
+        # keep as decimal
+        return f'"{value}"^^xsd:decimal'
+    s = _ttl_escape(str(value))
+    return f'"{s}"^^{datatype}' if datatype else f'"{s}"'
+
+
+def _is_iri(v: Any) -> bool:
+    return isinstance(v, str) and v.strip().startswith(("http://", "https://", "urn:"))
+
+
+def _as_iri(v: str) -> str:
+    v = v.strip()
+    return v if (v.startswith("<") and v.endswith(">")) else f"<{v}>"
+
+
+def _infer_sf_type_from_wkt(wkt: str) -> str:
+    w = (wkt or "").strip().upper()
+    if w.startswith("POINT"):
+        return "sf:Point"
+    if w.startswith("LINESTRING"):
+        return "sf:LineString"
+    if w.startswith("POLYGON"):
+        return "sf:Polygon"
+    if w.startswith("MULTIPOINT"):
+        return "sf:MultiPoint"
+    if w.startswith("MULTILINESTRING"):
+        return "sf:MultiLineString"
+    if w.startswith("MULTIPOLYGON"):
+        return "sf:MultiPolygon"
+    return "sf:Geometry"
+
+
+def _emit_object_id_label_inline(
+    predicate: str,
+    value: Any,
+    inline: List[str],
+    post: List[str],
+    label_predicate: str = "rdfs:label",
+    bnode_prefix: str = "_:obj",
+) -> None:
+    items = value if isinstance(value, list) else [value]
+    bcount = 0
+    for it in items:
+        iri = None
+        label = None
+        if isinstance(it, dict):
+            if isinstance(it.get("id"), str) and it["id"].strip():
+                iri = it["id"].strip()
+            if isinstance(it.get("label"), str) and it["label"].strip():
+                label = it["label"].strip()
+        elif _is_iri(it):
+            iri = str(it).strip()
+        elif isinstance(it, str) and it.strip():
+            label = it.strip()
+
+        if iri:
+            inline.append(f"    {predicate} {_as_iri(iri)} ;")
+        elif label:
+            bcount += 1
+            node = f"{bnode_prefix}{bcount}"
+            inline.append(f"    {predicate} {node} ;")
+            post.append(f"{node} {label_predicate} {_ttl_lit(label)} .")
+
+
+def _apply_md_cff_mapping(
+    md: Dict[str, Any], subj: str, tracker: "ProvenanceTracker"
+) -> Tuple[List[str], List[str]]:
+    """
+    Returns (inline_predicate_lines, post_triples_lines)
+    Inline lines must be used inside the dataset block (with trailing ';').
+    Post triples are full triples to append after the dataset block.
+    """
+    cfg = _load_md_cff_crosswalk()
+    mappings: Dict[str, Any] = cfg.get("mappings") or {}
+    handlers: Dict[str, Any] = cfg.get("handlers") or {}
+    rules: Dict[str, Any] = cfg.get("rules") or {}
+    label_pred = (rules.get("object_id_label") or {}).get(
+        "label_predicate"
+    ) or "rdfs:label"
+
+    inline: List[str] = []
+    post: List[str] = []
+
+    # keys we already emit explicitly in fdo_rdf (avoid duplicates)
+    skip_keys = {
+        "title",
+        "description",
+        "publishers",
+        "creators",
+        "license",
+        "version",
+        "fdo_type",
+    }
+
+    for key, spec in mappings.items():
+        if key in skip_keys:
+            continue
+
+        val = _md_get(md, key)
+        if val is None:
+            continue
+
+        # handler-only (e.g., temporal)
+        if (
+            isinstance(spec, dict)
+            and "handler" in spec
+            and "predicate" not in spec
+            and "emit" not in spec
+        ):
+            hname = spec["handler"]
+            if hname == "temporal_node" and isinstance(val, dict):
+                # mint temporal node IRI deterministically
+                node = f"<{md.get('id')}_temporal>"
+                post.append(f"{subj} dct:temporal {node} .")
+                post.append(f"{node} a dct:PeriodOfTime .")
+                if isinstance(val.get("label"), str) and val["label"].strip():
+                    post.append(f"{node} rdfs:label {_ttl_lit(val['label'].strip())} .")
+                if val.get("start") is not None:
+                    post.append(
+                        f"{node} dcat:startDate {_ttl_lit(val['start'], datatype='xsd:integer')} ."
+                    )
+                if val.get("end") is not None:
+                    post.append(
+                        f"{node} dcat:endDate {_ttl_lit(val['end'], datatype='xsd:integer')} ."
+                    )
+                tracker.record(
+                    field="dataset.temporal", source="MD.cff", detail=val, count_inc=1
+                )
+            continue
+
+        # emit list (used by spatial)
+        if isinstance(spec, dict) and "emit" in spec and isinstance(spec["emit"], list):
+            for e in spec["emit"]:
+                if "predicate" in e:
+                    pred = e["predicate"]
+                    src_key = e.get("from")
+                    v = (
+                        val
+                        if not src_key
+                        else (val.get(src_key) if isinstance(val, dict) else None)
+                    )
+                    if v is None:
+                        continue
+                    vtype = e.get("value_type", "literal")
+                    if vtype == "iri_optional":
+                        if _is_iri(v):
+                            inline.append(f"    {pred} {_as_iri(str(v))} ;")
+                            tracker.record(
+                                field=f"dataset.{key}.{src_key}",
+                                source="MD.cff",
+                                detail=v,
+                            )
+                    elif vtype == "literal":
+                        inline.append(f"    {pred} {_ttl_lit(v)} ;")
+                        tracker.record(
+                            field=f"dataset.{key}.{src_key}", source="MD.cff", detail=v
+                        )
+                    else:
+                        inline.append(f"    {pred} {_ttl_lit(v)} ;")
+                        tracker.record(
+                            field=f"dataset.{key}.{src_key}", source="MD.cff", detail=v
+                        )
+                elif "handler" in e:
+                    # currently only geosparql_geometry from wkt
+                    hname = e["handler"]
+                    src_key = e.get("from")
+                    wkt = (
+                        val.get(src_key)
+                        if (isinstance(val, dict) and src_key)
+                        else None
+                    )
+                    if (
+                        hname == "geosparql_geometry"
+                        and isinstance(wkt, str)
+                        and wkt.strip()
+                    ):
+                        # inline explicit lat/lon if present (as requested)
+                        if (
+                            isinstance(val.get("lat"), (int, float, str))
+                            and str(val.get("lat")).strip()
+                        ):
+                            inline.append(
+                                f"    schema:latitude {_ttl_lit(val.get('lat'), datatype='xsd:decimal')} ;"
+                            )
+                        if (
+                            isinstance(val.get("lon"), (int, float, str))
+                            and str(val.get("lon")).strip()
+                        ):
+                            inline.append(
+                                f"    schema:longitude {_ttl_lit(val.get('lon'), datatype='xsd:decimal')} ;"
+                            )
+
+                        node = f"<{md.get('id')}_geom>"
+                        sf_type = _infer_sf_type_from_wkt(wkt)
+                        post.append(f"{subj} geosparql:hasGeometry {node} .")
+                        post.append(f"{node} a {sf_type} .")
+                        post.append(
+                            f'{node} geosparql:asWKT "{_ttl_escape("<http://www.opengis.net/def/crs/EPSG/0/4326> " + wkt.strip())}"^^geosparql:wktLiteral .'
+                        )
+                        tracker.record(
+                            field="dataset.spatial.geometry",
+                            source="MD.cff",
+                            detail={"sf_type": sf_type},
+                            count_inc=1,
+                        )
+            continue
+
+        # normal predicate mappings
+        if isinstance(spec, dict) and "predicate" in spec:
+            pred = spec["predicate"]
+            vtype = spec.get("value_type", "literal")
+            multiple = bool(spec.get("multiple"))
+
+            values = val if (multiple and isinstance(val, list)) else [val]
+
+            for v in values:
+                if v is None:
+                    continue
+                if vtype == "literal":
+                    inline.append(f"    {pred} {_ttl_lit(v)} ;")
+                elif vtype == "literal_date":
+                    inline.append(f"    {pred} {_ttl_lit(v, datatype='xsd:date')} ;")
+                elif vtype == "iri":
+                    if _is_iri(v):
+                        inline.append(f"    {pred} {_as_iri(str(v))} ;")
+                elif vtype == "curie_or_iri":
+                    s = str(v).strip()
+                    inline.append(f"    {pred} {_as_iri(s) if _is_iri(s) else s} ;")
+                elif vtype == "object_id_label":
+                    _emit_object_id_label_inline(
+                        pred, v, inline, post, label_predicate=label_pred
+                    )
+                elif vtype == "literal_or_object":
+                    # if dict with id -> iri, if dict with label -> literal,
+                    # else: keep the object as JSON literal (useful for provenance-like blocks)
+                    if isinstance(v, dict):
+                        if isinstance(v.get("id"), str) and v["id"].strip():
+                            inline.append(f"    {pred} {_as_iri(v['id'].strip())} ;")
+                        elif isinstance(v.get("label"), str) and v["label"].strip():
+                            inline.append(
+                                f"    {pred} {_ttl_lit(v['label'].strip())} ;"
+                            )
+                        else:
+                            try:
+                                blob = json.dumps(v, ensure_ascii=False, sort_keys=True)
+                            except Exception:
+                                blob = str(v)
+                            inline.append(f"    {pred} {_ttl_lit(blob)} ;")
+                    elif _is_iri(v):
+                        inline.append(f"    {pred} {_as_iri(str(v))} ;")
+                    else:
+                        inline.append(f"    {pred} {_ttl_lit(v)} ;")
+                else:
+                    inline.append(f"    {pred} {_ttl_lit(v)} ;")
+
+            tracker.record(
+                field=f"dataset.{key}",
+                source="MD.cff",
+                detail={"value_type": vtype},
+                count_inc=len(values),
+            )
+
+    return inline, post
+
+
+def _spdx_url(license_value: Any) -> Optional[str]:
+    """Return SPDX URL for string or {id,label} dict (MD.cff license)."""
+    if license_value is None:
         return None
-    lid = license_id.strip()
+    if isinstance(license_value, dict):
+        lid = str(license_value.get("id") or license_value.get("label") or "").strip()
+    else:
+        lid = str(license_value).strip()
+    if not lid:
+        return None
+    if lid.startswith(("http://", "https://")):
+        return lid
     return f"https://spdx.org/licenses/{lid}.html"
 
 
@@ -504,6 +829,9 @@ def crosswalk_to_rdf_turtle(
 
     lines: List[str] = []
 
+    post_dataset_triples: List[str] = (
+        []
+    )  # Triples emitted after the dataset block (e.g. license labels)
     # Prefixes
     lines.extend(
         [
@@ -512,6 +840,10 @@ def crosswalk_to_rdf_turtle(
             "@prefix fdo: <https://w3id.org/fdo-squirrel/> .",
             "@prefix schema: <https://schema.org/> .",
             "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .",
+            "@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .",
+            "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .",
+            "@prefix geosparql: <http://www.opengis.net/ont/geosparql#> .",
+            "@prefix sf: <http://www.opengis.net/ont/sf#> .",
             "@prefix foaf: <http://xmlns.com/foaf/0.1/> .",
             "@prefix codemeta: <https://codemeta.github.io/terms/> .",
             "@prefix owl: <http://www.w3.org/2002/07/owl#> .",
@@ -645,17 +977,45 @@ def crosswalk_to_rdf_turtle(
     if lic:
         spdx = _spdx_url(lic)
         if spdx:
-            lines.append(f"    dct:license <{spdx}>,")
-            lines.append(f'        "{lic}" ;')
+            # Prefer SPDX URI only (avoid also emitting the dict/string as a literal).
+            lines.append(f"    dct:license <{spdx}> ;")
+
+            # If we have a human label (MD.cff allows {id,label}), attach it to the SPDX resource.
+            llabel = None
+            if isinstance(lic, dict):
+                llabel = (
+                    (lic.get("label") or lic.get("id") or "").strip()
+                    if isinstance((lic.get("label") or lic.get("id") or ""), str)
+                    else None
+                )
+            elif isinstance(lic, str):
+                llabel = lic.strip()
+
+            if llabel:
+                post_dataset_triples.append(f"<{spdx}> rdfs:label {_ttl_lit(llabel)} .")
+
             tracker.record(
                 field="dataset.license",
                 source="MD.cff",
                 detail={"license": lic, "spdx": spdx},
+                count_inc=1,
             )
         else:
-            lines.append(f'    dct:license "{lic}" ;')
+            # Fall back to a literal (string) or JSON blob (dict without id/label)
+            if isinstance(lic, dict):
+                try:
+                    lic_lit = json.dumps(lic, ensure_ascii=False, sort_keys=True)
+                except Exception:
+                    lic_lit = str(lic)
+                lines.append(f"    dct:license {_ttl_lit(lic_lit)} ;")
+            else:
+                lines.append(f"    dct:license {_ttl_lit(lic)} ;")
+
             tracker.record(
-                field="dataset.license", source="MD.cff", detail={"license": lic}
+                field="dataset.license",
+                source="MD.cff",
+                detail={"license": lic},
+                count_inc=1,
             )
 
     # Publisher / title
@@ -814,6 +1174,18 @@ def crosswalk_to_rdf_turtle(
             count_inc=len(dists),
         )
 
+    # --------------------------------------------------
+    # Mapping-driven MD.cff emission (crosswalk_md_cff_to_rdf.yaml)
+    # --------------------------------------------------
+    md_root = getattr(cw, "md_raw", None)
+    if isinstance(md_root, dict):
+        inline_map, post_map = _apply_md_cff_mapping(md_root, subj, tracker)
+        # inline predicates
+        for ln in inline_map:
+            lines.append(ln)
+    else:
+        post_map = []
+
     # close dataset block
     if lines[-1].strip().endswith(";"):
         lines[-1] = lines[-1].rstrip().rstrip(";") + " ."
@@ -821,6 +1193,12 @@ def crosswalk_to_rdf_turtle(
         lines[-1] = lines[-1].rstrip() + " ."
 
     lines.append("")
+
+    # Post-triples from mapping-driven handlers (GeoSPARQL, temporal)
+    for t in post_map:
+        lines.append(t)
+    if post_map:
+        lines.append("")
 
     # Publisher + creators nodes
     lines.append(f"<{cw.publisher_id}> a schema:Organization ;")
@@ -946,5 +1324,9 @@ def crosswalk_to_rdf_turtle(
         )
     except Exception:
         pass
+
+    # Append any triples that must appear outside the dataset block
+    if post_dataset_triples:
+        lines.extend(post_dataset_triples)
 
     return "\n".join(lines)

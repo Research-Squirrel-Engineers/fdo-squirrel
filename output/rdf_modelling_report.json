@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-01-22T15:49:31.243335+00:00",
+  "generated_at": "2026-01-25T12:58:52.305699+00:00",
   "summary": {
     "file roles rules": {
       "sources": [
@@ -18,7 +18,7 @@
       ],
       "examples": [
         {
-          "id": "https://doi.org/10.5281/zenodo.1234567",
+          "id": "https://doi.org/10.1234/fdo.demo.3d.001",
           "fdo_type": "fdo:3DDataFDO"
         }
       ],
@@ -80,6 +80,28 @@
       ],
       "count": 7
     },
+    "dataset.description": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "description": "Demo FDO package containing 3D data and minimal heritage context metadata for testing RDF generation and SPARQL queries …"
+        }
+      ],
+      "count": 0
+    },
+    "dataset.version": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "version": "0.1.0"
+        }
+      ],
+      "count": 0
+    },
     "dataset.creators": {
       "sources": [
         "CITATION.cff"
@@ -91,14 +113,29 @@
       ],
       "count": 1
     },
+    "dataset.license": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "license": {
+            "label": "CC-BY-4.0",
+            "id": "https://spdx.org/licenses/CC-BY-4.0.html"
+          },
+          "spdx": "https://spdx.org/licenses/CC-BY-4.0.html"
+        }
+      ],
+      "count": 1
+    },
     "dataset.publisher": {
       "sources": [
         "MD.cff"
       ],
       "examples": [
         {
-          "publisher_id": "https://www.wikidata.org/entity/Q151991",
-          "publisher_label": "Leibniz-Zentrum für Archäologie"
+          "publisher_id": "https://ror.org/03yrm5c26",
+          "publisher_label": "LEIZA – Leibniz-Zentrum für Archäologie"
         }
       ],
       "count": 0
@@ -109,10 +146,21 @@
       ],
       "examples": [
         {
-          "title": "3D Ogham Stones Collection (South-West Ireland)"
+          "title": "Demo 3D Dataset – Example Object"
         }
       ],
       "count": 0
+    },
+    "dataset.keywords": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "count": 4
+        }
+      ],
+      "count": 4
     },
     "dataset.distributions": {
       "sources": [
@@ -125,13 +173,225 @@
       ],
       "count": 7
     },
+    "dataset.date_created": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal_date"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.date_released": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal_date"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.date_modified": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal_date"
+        }
+      ],
+      "count": 2
+    },
+    "dataset.funding": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal_or_object"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.contributors": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "object_id_label"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.spatial.id": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        "http://www.wikidata.org/entity/Q215905"
+      ],
+      "count": 0
+    },
+    "dataset.spatial.bounding_box": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        "6.3000,50.1000,7.2000,50.9000"
+      ],
+      "count": 0
+    },
+    "dataset.spatial.geometry": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "sf_type": "sf:Point"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.temporal": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "label": "Late Roman period",
+          "id": "http://www.wikidata.org/entity/Q170347",
+          "start": -300,
+          "end": 640,
+          "range": [
+            -300,
+            640
+          ]
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.context": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.object_type": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "object_id_label"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.monument": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "object_id_label"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.material": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "object_id_label"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.documentation_purpose": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.overall_condition": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.heritage_object.conservation_urgency": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.technique.processing": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal_or_object"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.technique.programming_languages": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "literal"
+        }
+      ],
+      "count": 1
+    },
+    "dataset.technique.repository.url": {
+      "sources": [
+        "MD.cff"
+      ],
+      "examples": [
+        {
+          "value_type": "iri"
+        }
+      ],
+      "count": 1
+    },
     "agent.publisher": {
       "sources": [
         "MD.cff"
       ],
       "examples": [
         {
-          "publisher_id": "https://www.wikidata.org/entity/Q151991"
+          "publisher_id": "https://ror.org/03yrm5c26"
         }
       ],
       "count": 0
