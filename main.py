@@ -24,27 +24,43 @@ PACKAGE_SOURCE = "C:/git/fdo-squirrel/example_fdo.zip"
 def _normalise_report(report: dict) -> list[dict]:
     """
     Returns a list of rows with keys:
-      field, source, count, examples(list), detail(optional)
+      field, sources(list[str]), primary_source(str), count, examples(list)
     Supports both historic and current report shapes.
     """
     rows: list[dict] = []
 
-    # Newer shape: {"summary": {"dataset.temporal": {...}, ...}, ...}
+    def _row(field: str, meta: dict) -> dict:
+        sources = meta.get("sources")
+        if isinstance(sources, str):
+            sources = [sources]
+        if not isinstance(sources, list):
+            # Backwards compat: some variants used "source"
+            src = meta.get("source", "unknown")
+            sources = [src] if src else ["unknown"]
+        sources = [str(s) for s in sources if s is not None] or ["unknown"]
+        return {
+            "field": field,
+            "sources": sources,
+            "primary_source": sources[0],
+            "count": meta.get("count", 0),
+            "examples": meta.get("examples", []) or [],
+        }
+
+    # Shape: {"summary": {"dataset.temporal": {...}, ...}, ...}
     if isinstance(report.get("summary"), dict):
-        items = report["summary"].items()
-        for field, meta in items:
-            if not isinstance(meta, dict):
-                continue
-            rows.append(
-                {
-                    "field": field,
-                    "source": meta.get("source", "unknown"),
-                    "count": meta.get("count", 0),
-                    "examples": meta.get("examples", []) or [],
-                    "detail": meta.get("detail"),
-                }
-            )
+        for field, meta in report["summary"].items():
+            if isinstance(meta, dict):
+                rows.append(_row(field, meta))
         return rows
+
+    # Older shape: {"fields": {"dataset.temporal": {...}, ...}, ...}
+    if isinstance(report.get("fields"), dict):
+        for field, meta in report["fields"].items():
+            if isinstance(meta, dict):
+                rows.append(_row(field, meta))
+        return rows
+
+    return rows
 
     # Older shape: {"fields": {"dataset.temporal": {...}, ...}, ...}
     if isinstance(report.get("fields"), dict):
@@ -82,7 +98,7 @@ def write_html_report(json_path: Path, html_path: Path, context: dict):
     # Group by source for clearer narrative sections
     by_source: dict[str, list[dict]] = {}
     for r in rows:
-        by_source.setdefault(str(r.get("source", "unknown")), []).append(r)
+        by_source.setdefault(str(r.get("primary_source", "unknown")), []).append(r)
 
     # Stable ordering: MD.cff first, CITATION.cff second, then everything else
     preferred = ["MD.cff", "CITATION.cff", "ZIP", "static", "unknown"]
@@ -176,7 +192,7 @@ def write_html_report(json_path: Path, html_path: Path, context: dict):
         html_parts.append(f"<div class='muted'>{help_txt}</div>")
         html_parts.append(
             "<table><thead><tr>"
-            "<th>Field</th><th>Count</th><th>Examples</th>"
+            "<th>Field</th><th>Sources</th><th>Count</th><th>Examples</th>"
             "</tr></thead><tbody>"
         )
         for r in rows_src:
