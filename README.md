@@ -19,6 +19,10 @@ Given a **ZIP package as Source of Truth**, `fdo-squirrel`:
 
 The result is a **self-describing FDO** that can be ingested into RDF-based infrastructures and knowledge graphs.
 
+### Architecture overview
+
+![ZIP-centric FDO modelling workflow](architecture.png)
+
 ---
 
 ## Input requirements
