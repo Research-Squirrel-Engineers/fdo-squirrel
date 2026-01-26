@@ -992,7 +992,8 @@ def crosswalk_to_rdf_turtle(
             "@prefix cff: <https://citation-file-format.github.io/terms/> .",
             "@prefix wd: <http://www.wikidata.org/entity/> .",
             "@prefix wdt: <http://www.wikidata.org/prop/direct/> .",
-            "",
+            "@prefix crm: <http://www.cidoc-crm.org/cidoc-crm/> .",
+            "@prefix crmdig: <http://www.ics.forth.gr/isl/CRMdig/> .",
         ]
     )
 
@@ -1441,4 +1442,4 @@ def crosswalk_to_rdf_turtle(
     if post_dataset_triples:
         lines.extend(post_dataset_triples)
 
-    return "".join(lines)
+    return "\n".join(lines)
