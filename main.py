@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 import json
 import html
 from datetime import datetime
@@ -18,6 +19,33 @@ from fdo import crosswalk_to_rdf_turtle
 PACKAGE_SOURCE = "C:/tmp/fdo/ogham-analysis.zip"  # fdo:AnalysisFDO
 # PACKAGE_SOURCE = "C:/tmp/fdo/CHUIS_1.zip" # fdo:3DDataFDO
 # PACKAGE_SOURCE = "C:/tmp/fdo/GEARS_1.zip" # fdo:3DDataFDO
+
+
+def resolve_package_source(default_value: str) -> str:
+    """
+    Resolve package source in this order:
+      1) CLI: --package / -p
+      2) Local config: config.local.json (repo root, gitignored)
+      3) Fallback: hardcoded PACKAGE_SOURCE
+    """
+    parser = argparse.ArgumentParser(description="fdo-squirrel runner")
+    parser.add_argument("--package", "-p", default=None, help="Path to FDO ZIP package")
+    args = parser.parse_args()
+
+    if args.package:
+        return args.package
+
+    cfg_path = Path(__file__).resolve().parent / "config.local.json"
+    if cfg_path.exists():
+        try:
+            cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+            ps = cfg.get("package_source")
+            if isinstance(ps, str) and ps.strip():
+                return ps.strip()
+        except Exception:
+            pass
+
+    return default_value
 
 
 def _normalise_report(report: dict) -> list[dict]:
@@ -222,10 +250,11 @@ def main():
     # --------------------------------------------------
     # Load FDO package (ZIP via URL / DOI)
     # --------------------------------------------------
-    md, cff, info = load_package_from_source(PACKAGE_SOURCE)
+    package_source = resolve_package_source(PACKAGE_SOURCE)
+    md, cff, info = load_package_from_source(package_source)
 
     # Centralised provenance: remember exactly which package was used
-    info["package_source"] = PACKAGE_SOURCE
+    info["package_source"] = package_source
 
     # --------------------------------------------------
     # Validate MD.cff against schema
@@ -269,7 +298,7 @@ def main():
 
     write_html_report(json_report_path, output_dir / "rdf_modelling_report.html", info)
     print(f"✔ RDF written to {output_path}")
-    print(f"✔ Package source: {PACKAGE_SOURCE}")
+    print(f"✔ Package source: {package_source}")
 
 
 if __name__ == "__main__":
