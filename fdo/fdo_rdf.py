@@ -361,6 +361,22 @@ def _apply_md_cff_mapping(
                 node = f"<{md.get('id')}_temporal>"
                 post.append(f"{subj} dct:temporal {node} .")
                 post.append(f"{node} a dct:PeriodOfTime .")
+                # Link ChronOntology (or any provided temporal 'id') to the minted temporal node
+                tid = val.get("id")
+                if isinstance(tid, str) and tid.strip():
+                    tid = tid.strip()
+                    if _is_iri(tid):
+                        # Use owl:sameAs as a clean "identity link" to the external ChronOntology resource
+                        post.append(f"{node} owl:sameAs {_as_iri(tid)} .")
+                    else:
+                        # If it's not an IRI, keep it as identifier literal
+                        post.append(f"{node} dct:identifier {_ttl_lit(tid)} .")
+                tracker.record(
+                    field="dataset.temporal.id",
+                    source="MD.cff",
+                    detail={"id": tid},
+                    count_inc=1,
+                )
                 if isinstance(val.get("label"), str) and val["label"].strip():
                     post.append(f"{node} rdfs:label {_ttl_lit(val['label'].strip())} .")
                 if val.get("start") is not None:
