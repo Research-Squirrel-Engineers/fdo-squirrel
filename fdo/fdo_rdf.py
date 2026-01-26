@@ -583,8 +583,6 @@ def _zip_members_with_hashes(
                 detail={"count": len(members)},
                 count_inc=len(members),
             )
-        return members
-
     # Fallback: best-effort if ingest already provided members
     candidates = None
     for key in ("zip_members", "members", "zip_content", "files"):
@@ -626,6 +624,66 @@ def _zip_members_with_hashes(
             detail={"count": len(members)},
             count_inc=len(members),
         )
+
+    return members
+
+
+def _load_md_raw_from_zip(
+    info: Optional[Dict[str, Any]],
+    tracker: Optional[ProvenanceTracker] = None,
+) -> Optional[Dict[str, Any]]:
+    """Best-effort: read MD.cff from the ZIP path in info and return it as dict.
+
+    This makes the ZIP the single source-of-truth for modelling, independent of caller behaviour.
+    """
+    if not info or not isinstance(info, dict):
+        return None
+
+    zip_path = _get_project_root_from_info(info)
+    if not zip_path:
+        return None
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            candidates = ["MD.cff", "md.cff", "MD.CFF"]
+            name_in_zip = None
+            for n in candidates:
+                try:
+                    zf.getinfo(n)
+                    name_in_zip = n
+                    break
+                except KeyError:
+                    continue
+
+            if not name_in_zip:
+                lower_map = {zi.filename.lower(): zi.filename for zi in zf.infolist()}
+                if "md.cff" in lower_map:
+                    name_in_zip = lower_map["md.cff"]
+
+            if not name_in_zip:
+                return None
+
+            raw_txt = zf.read(name_in_zip).decode("utf-8", errors="replace")
+            data = yaml.safe_load(raw_txt)
+            if isinstance(data, dict):
+                if tracker:
+                    tracker.record(
+                        field="md.raw",
+                        source="MD.cff",
+                        detail={"mode": "read from ZIP", "path": name_in_zip},
+                        count_inc=1,
+                    )
+                return data
+    except Exception as e:
+        if tracker:
+            tracker.record(
+                field="md.raw",
+                source="MD.cff",
+                detail={"mode": "read from ZIP failed", "error": str(e)},
+            )
+        return None
+
+    return None
 
 
 def _load_citation_raw_from_zip(
@@ -889,11 +947,33 @@ def crosswalk_to_rdf_turtle(
     rules_cfg = _load_classification_rules(tracker=tracker)
     info = info or {}
 
-    lines: List[str] = []
+    # --------------------------------------------------
+    # Source-of-truth: always read MD.cff and CITATION.cff from the ZIP package
+    # --------------------------------------------------
+    md_zip = _load_md_raw_from_zip(info, tracker=tracker)
+    citation_zip = _load_citation_raw_from_zip(info, tracker=tracker)
 
-    post_dataset_triples: List[str] = (
-        []
-    )  # Triples emitted after the dataset block (e.g. license labels)
+    # Prefer ZIP-derived metadata when available (caller-provided values remain as fallback).
+    md_root = md_zip if isinstance(md_zip, dict) else getattr(cw, "md_raw", None)
+    citation_raw = citation_zip if isinstance(citation_zip, dict) else citation_raw
+
+    # Derive key display fields from MD.cff (ZIP) where possible
+    if isinstance(md_root, dict):
+        cw_title = md_root.get("title") or cw.title
+        cw_description = md_root.get("description") or getattr(cw, "description", None)
+        cw_version = md_root.get("version") or getattr(cw, "version", None)
+        cw_fdo_type = md_root.get("fdo_type") or cw.fdo_type
+        cw_id = md_root.get("id") or cw.id
+    else:
+        cw_title = cw.title
+        cw_description = getattr(cw, "description", None)
+        cw_version = getattr(cw, "version", None)
+        cw_fdo_type = cw.fdo_type
+        cw_id = cw.id
+
+    lines: List[str] = []
+    post_dataset_triples: List[str] = []
+
     # Prefixes
     lines.extend(
         [
@@ -916,12 +996,12 @@ def crosswalk_to_rdf_turtle(
         ]
     )
 
-    subj = f"<{cw.id}>"
+    subj = f"<{cw_id}>"
 
     tracker.record(
         field="dataset.id",
         source="MD.cff",
-        detail={"id": cw.id, "fdo_type": cw.fdo_type},
+        detail={"id": cw_id, "fdo_type": cw_fdo_type},
     )
 
     # ZIP members (with sha256 if possible)
@@ -963,14 +1043,13 @@ def crosswalk_to_rdf_turtle(
         )
 
     # ---------- Core dataset block ----------
-    lines.append(f"{subj} a dcat:Dataset, crmdig:D1, crm:E73, {cw.fdo_type} ;")
+    lines.append(f"{subj} a dcat:Dataset, crmdig:D1, crm:E73, {cw_fdo_type} ;")
 
-    # Optional MD.cff fields (use getattr so it doesn't crash if absent)
     created = getattr(cw, "created", None)
     issued = getattr(cw, "issued", None)
     modified = getattr(cw, "modified", None)
-    description = getattr(cw, "description", None)
-    version = getattr(cw, "version", None)
+    description = cw_description
+    version = cw_version
     identifier = getattr(cw, "identifier", None) or getattr(cw, "fdo_id", None)
 
     if created:
@@ -1011,37 +1090,57 @@ def crosswalk_to_rdf_turtle(
             field="dataset.modified", source="MD.cff", detail={"modified": modified}
         )
 
-    # Creators (dataset -> persons)
-    for cid, _clabel in cw.creators:
-        lines.append(f"    dct:creator <{cid}> ;")
+    # Creators (dataset -> persons) derived from CITATION.cff (ZIP) if possible
+    derived_creators: List[Tuple[str, str]] = []
+    if isinstance(citation_raw, dict):
+        authors = citation_raw.get("authors")
+        if isinstance(authors, list):
+            for a in authors:
+                if not isinstance(a, dict):
+                    continue
+                orcid = a.get("orcid")
+                family = a.get("family-names")
+                given = a.get("given-names")
+                name = a.get("name")
+                label = None
+                if isinstance(name, str) and name.strip():
+                    label = name.strip()
+                elif isinstance(family, str) and isinstance(given, str):
+                    label = f"{family.strip()}, {given.strip()}"
+                elif isinstance(family, str) and family.strip():
+                    label = family.strip()
 
-    if cw.creators:
-        # Heuristic provenance: ORCID-style IDs typically come from CITATION.cff
-        creators_source = "MD.cff"
-        try:
-            if any(
-                isinstance(cid, str) and "orcid.org" in cid for cid, _ in cw.creators
-            ):
-                creators_source = "CITATION.cff"
-        except Exception:
-            pass
+                if isinstance(orcid, str) and orcid.strip().startswith("http"):
+                    derived_creators.append((orcid.strip(), label or orcid.strip()))
+                elif label:
+                    hid = hashlib.sha256(label.encode("utf-8")).hexdigest()[:16]
+                    derived_creators.append((f"urn:fdo-squirrel:person/{hid}", label))
 
+    creators_to_use = (
+        derived_creators if derived_creators else list(getattr(cw, "creators", []))
+    )
+
+    for cid, _clabel in creators_to_use:
+        if isinstance(cid, str) and cid.startswith(("http://", "https://", "urn:")):
+            lines.append(f"    dct:creator <{cid}> ;")
+        else:
+            lines.append(f"    dct:creator {_ttl_lit(cid)} ;")
+
+    if creators_to_use:
+        creators_source = "CITATION.cff" if derived_creators else "MD.cff"
         tracker.record(
             field="dataset.creators",
             source=creators_source,
-            detail={"count": len(cw.creators)},
-            count_inc=len(cw.creators),
+            detail={"count": len(creators_to_use)},
+            count_inc=len(creators_to_use),
         )
 
-    # License from MD.cff if present (kept; CITATION.cff license handled in postprocess)
+    # License from MD.cff if present (CITATION.cff license handled in postprocess)
     lic = getattr(cw, "license", None)
     if lic:
         spdx = _spdx_url(lic)
         if spdx:
-            # Prefer SPDX URI only (avoid also emitting the dict/string as a literal).
             lines.append(f"    dct:license <{spdx}> ;")
-
-            # If we have a human label (MD.cff allows {id,label}), attach it to the SPDX resource.
             llabel = None
             if isinstance(lic, dict):
                 llabel = (
@@ -1051,7 +1150,6 @@ def crosswalk_to_rdf_turtle(
                 )
             elif isinstance(lic, str):
                 llabel = lic.strip()
-
             if llabel:
                 post_dataset_triples.append(f"<{spdx}> rdfs:label {_ttl_lit(llabel)} .")
 
@@ -1062,7 +1160,6 @@ def crosswalk_to_rdf_turtle(
                 count_inc=1,
             )
         else:
-            # Fall back to a literal (string) or JSON blob (dict without id/label)
             if isinstance(lic, dict):
                 try:
                     lic_lit = json.dumps(lic, ensure_ascii=False, sort_keys=True)
@@ -1071,7 +1168,6 @@ def crosswalk_to_rdf_turtle(
                 lines.append(f"    dct:license {_ttl_lit(lic_lit)} ;")
             else:
                 lines.append(f"    dct:license {_ttl_lit(lic)} ;")
-
             tracker.record(
                 field="dataset.license",
                 source="MD.cff",
@@ -1081,24 +1177,20 @@ def crosswalk_to_rdf_turtle(
 
     # Publisher / title
     lines.append(f"    dct:publisher <{cw.publisher_id}> ;")
-    lines.append(f'    dct:title "{cw.title}" ;')
+    lines.append(f'    dct:title "{cw_title}" ;')
     tracker.record(
         field="dataset.publisher",
         source="MD.cff",
         detail={"publisher_id": cw.publisher_id, "publisher_label": cw.publisher_label},
     )
-    tracker.record(field="dataset.title", source="MD.cff", detail={"title": cw.title})
+    tracker.record(field="dataset.title", source="MD.cff", detail={"title": cw_title})
 
-    # -----------------------------
     # identifiers (MD.cff) → RDF
-    # -----------------------------
     identifiers = getattr(cw, "identifiers", None)
     if identifiers and isinstance(identifiers, list):
         ident_count = 0
         sameas_count = 0
-
         for ident in identifiers:
-            # allow either dicts or strings
             if isinstance(ident, str):
                 if ident.startswith(("http://", "https://")):
                     lines.append(f"    dct:identifier <{ident}> ;")
@@ -1114,7 +1206,6 @@ def crosswalk_to_rdf_turtle(
             ident_label = ident.get("label")
             same_as = ident.get("sameAs") or ident.get("same_as") or []
 
-            # Primary ID
             if isinstance(ident_id, str) and ident_id.startswith(
                 ("http://", "https://")
             ):
@@ -1124,12 +1215,10 @@ def crosswalk_to_rdf_turtle(
                 lines.append(f'    dct:identifier "{ident_id.strip()}" ;')
                 ident_count += 1
 
-            # Label as additional identifier (your "both if both" rule)
             if isinstance(ident_label, str) and ident_label.strip():
                 lines.append(f'    dct:identifier "{ident_label.strip()}" ;')
                 ident_count += 1
 
-            # sameAs links (URI only)
             if isinstance(same_as, list):
                 for sa in same_as:
                     if isinstance(sa, str) and sa.startswith(("http://", "https://")):
@@ -1146,40 +1235,6 @@ def crosswalk_to_rdf_turtle(
             count_inc=ident_count,
         )
 
-    # Spatial / temporal if present
-    spatial = getattr(cw, "spatial", None)
-    if spatial and isinstance(spatial, list):
-        objs = []
-        for s in spatial:
-            if isinstance(s, dict) and s.get("id"):
-                objs.append(f"<{s['id']}>")
-                if s.get("label"):
-                    objs.append(f'"{s["label"]}"')
-            elif isinstance(s, str):
-                objs.append(f'"{s}"')
-        if objs:
-            lines.append("    dct:spatial " + ",\n        ".join(objs) + " ;")
-            tracker.record(
-                field="dataset.spatial", source="MD.cff", detail={"items": len(objs)}
-            )
-
-    temporal = getattr(cw, "temporal", None)
-    if temporal:
-        if isinstance(temporal, list):
-            for t in temporal:
-                if isinstance(t, dict) and t.get("label"):
-                    lines.append(f'    dct:temporal "{t["label"]}" ;')
-                elif isinstance(t, str):
-                    lines.append(f'    dct:temporal "{t}" ;')
-            tracker.record(
-                field="dataset.temporal", source="MD.cff", detail={"kind": "list"}
-            )
-        elif isinstance(temporal, str):
-            lines.append(f'    dct:temporal "{temporal}" ;')
-            tracker.record(
-                field="dataset.temporal", source="MD.cff", detail={"kind": "string"}
-            )
-
     # Landing page if present
     landing = getattr(cw, "landing_page", None) or getattr(cw, "landingPage", None)
     if (
@@ -1194,39 +1249,9 @@ def crosswalk_to_rdf_turtle(
             detail={"landingPage": landing},
         )
 
-    # Keywords (MD.cff) → dcat:keyword + dct:subject
-    keywords = getattr(cw, "keywords", None)
-    if keywords and isinstance(keywords, list):
-        kw_objs_keyword = []
-        kw_objs_subject = []
-        for kw in keywords:
-            if isinstance(kw, dict) and kw.get("id"):
-                kw_objs_keyword.append(f"<{kw['id']}>")
-                kw_objs_subject.append(f"<{kw['id']}>")
-                if kw.get("label"):
-                    kw_objs_keyword.append(f'"{kw["label"]}"')
-                    kw_objs_subject.append(f'"{kw["label"]}"')
-            elif isinstance(kw, str):
-                kw_objs_keyword.append(f'"{kw}"')
-                kw_objs_subject.append(f'"{kw}"')
-        if kw_objs_keyword:
-            lines.append(
-                "    dcat:keyword " + ",\n        ".join(kw_objs_keyword) + " ;"
-            )
-        if kw_objs_subject:
-            lines.append(
-                "    dct:subject " + ",\n        ".join(kw_objs_subject) + " ;"
-            )
-        tracker.record(
-            field="dataset.keywords",
-            source="MD.cff",
-            detail={"count": len(keywords)},
-            count_inc=len(keywords),
-        )
-
     # Distributions on dataset
     if dists:
-        dist_uris = ",\n        ".join([d[0] for d in dists])
+        dist_uris = ",".join([d[0] for d in dists])
         lines.append(f"    dcat:distribution {dist_uris} ;")
         tracker.record(
             field="dataset.distributions",
@@ -1235,13 +1260,9 @@ def crosswalk_to_rdf_turtle(
             count_inc=len(dists),
         )
 
-    # --------------------------------------------------
-    # Mapping-driven MD.cff emission (crosswalk_md_cff_to_rdf.yaml)
-    # --------------------------------------------------
-    md_root = getattr(cw, "md_raw", None)
+    # Mapping-driven MD.cff emission
     if isinstance(md_root, dict):
         inline_map, post_map = _apply_md_cff_mapping(md_root, subj, tracker)
-        # inline predicates
         for ln in inline_map:
             lines.append(ln)
     else:
@@ -1261,7 +1282,7 @@ def crosswalk_to_rdf_turtle(
     if post_map:
         lines.append("")
 
-    # Publisher + creators nodes
+    # Publisher node
     lines.append(f"<{cw.publisher_id}> a schema:Organization ;")
     lines.append(f'    schema:name "{cw.publisher_label}" .')
     lines.append("")
@@ -1271,17 +1292,9 @@ def crosswalk_to_rdf_turtle(
         detail={"publisher_id": cw.publisher_id},
     )
 
-    # Agent nodes for creators (source heuristic same as above)
-    agent_creators_source = "MD.cff"
-    try:
-        if cw.creators and any(
-            isinstance(cid, str) and "orcid.org" in cid for cid, _ in cw.creators
-        ):
-            agent_creators_source = "CITATION.cff"
-    except Exception:
-        pass
-
-    for cid, clabel in cw.creators:
+    # Creator agent nodes
+    agent_creators_source = "CITATION.cff" if derived_creators else "MD.cff"
+    for cid, clabel in creators_to_use:
         lines.append(f"<{cid}> a schema:Person ;")
         lines.append(f'    schema:name "{clabel}" .')
         lines.append("")
@@ -1291,15 +1304,14 @@ def crosswalk_to_rdf_turtle(
             detail={"creator_id": cid, "creator_name": clabel},
         )
 
-    # ---------- Distributions ----------
+    # Distributions
     for dist_uri, m in dists:
         name = m["name"]
         size = m.get("size")
         sha256_hex = m.get("sha256")
 
-        role = _classify_role(name, cw.fdo_type, rules_cfg, tracker=tracker)
+        role = _classify_role(name, cw_fdo_type, rules_cfg, tracker=tracker)
         mt = _media_type(name, tracker=tracker)
-
         access_url = f"<urn:fdo-squirrel:content/{quote(name, safe='')}>"
 
         lines.append(f"{dist_uri} a dcat:Distribution, crmdig:D9 ;")
@@ -1312,6 +1324,7 @@ def crosswalk_to_rdf_turtle(
                 detail={"file": name, "byteSize": size},
                 count_inc=1,
             )
+
         lines.append(f'    dcat:mediaType "{mt}" ;')
         lines.append(f'    fdo:path "{name}" ;')
         lines.append(f'    fdo:role "{role}" ;')
@@ -1339,43 +1352,38 @@ def crosswalk_to_rdf_turtle(
 
         lines.append("")
 
-    # If the caller did not forward parsed CITATION.cff content, attempt to
-    # load it from the ZIP to keep outputs consistent across FDO types.
-    if (not citation_triples) and (citation_raw is None):
-        citation_raw = _load_citation_raw_from_zip(info, tracker=tracker)
-
-    # ---------- Ensure CITATION.cff is expanded for all FDO types ----------
-    # Some pipelines may pass an empty citation_triples list for Software/Analysis FDOs.
-    # If raw CITATION.cff content is available, derive a minimal, type-agnostic set of
-    # citation-related triples here to ensure consistent outputs and reporting.
-    if (not citation_triples) and citation_raw:
-        subj_uri = subj  # e.g., <https://doi.org/...>
+    # If no upstream citation triples were provided, derive a minimal set from CITATION.cff (ZIP)
+    if not citation_triples and isinstance(citation_raw, dict):
+        subj_uri = subj
         derived: list[str] = []
 
-        # --- License (keep as literal; post-processing will upgrade to SPDX URIs where possible) ---
-        lic = citation_raw.get("license")
-        if isinstance(lic, str) and lic.strip():
-            lic_lit = '"' + lic.strip().replace('"', '\\"') + '"'
-            # Emit common predicates seen in other FDO types
-            derived.append(f"{subj_uri} cff:license {lic_lit} .")
-            derived.append(f"{subj_uri} cff:license-url {lic_lit} .")
-            derived.append(f"{subj_uri} schema:license {lic_lit} .")
-            derived.append(f"{subj_uri} codemeta:license {lic_lit} .")
-            derived.append(f"{subj_uri} wdt:P275 {lic_lit} .")
+        lic2 = citation_raw.get("license")
+        if isinstance(lic2, str) and lic2.strip():
+            lic_lit = '"' + lic2.strip().replace('"', '"') + '"'
+            derived.extend(
+                [
+                    f"{subj_uri} cff:license {lic_lit} .",
+                    f"{subj_uri} cff:license-url {lic_lit} .",
+                    f"{subj_uri} schema:license {lic_lit} .",
+                    f"{subj_uri} codemeta:license {lic_lit} .",
+                    f"{subj_uri} wdt:P275 {lic_lit} .",
+                ]
+            )
 
-        # --- Keywords ---
         kws = citation_raw.get("keywords")
         if isinstance(kws, list):
             for kw in kws:
-                if not isinstance(kw, str) or not kw.strip():
-                    continue
-                kw_lit = '"' + kw.strip().replace('"', '\\"') + '"'
-                derived.append(f"{subj_uri} cff:keywords {kw_lit} .")
-                derived.append(f"{subj_uri} schema:keywords {kw_lit} .")
-                derived.append(f"{subj_uri} codemeta:keywords {kw_lit} .")
-                derived.append(f"{subj_uri} wdt:P921 {kw_lit} .")
+                if isinstance(kw, str) and kw.strip():
+                    kw_lit = '"' + kw.strip().replace('"', '"') + '"'
+                    derived.extend(
+                        [
+                            f"{subj_uri} cff:keywords {kw_lit} .",
+                            f"{subj_uri} schema:keywords {kw_lit} .",
+                            f"{subj_uri} codemeta:keywords {kw_lit} .",
+                            f"{subj_uri} wdt:P921 {kw_lit} .",
+                        ]
+                    )
 
-        # --- Creators / Authors ---
         authors = citation_raw.get("authors")
         if isinstance(authors, list):
             for a in authors:
@@ -1383,30 +1391,12 @@ def crosswalk_to_rdf_turtle(
                     continue
                 orcid = a.get("orcid")
                 if isinstance(orcid, str) and orcid.strip().startswith("http"):
-                    # Treat ORCID as an identifier URI
                     derived.append(f"{subj_uri} dct:creator <{orcid.strip()}> .")
                     derived.append(f"{subj_uri} schema:creator <{orcid.strip()}> .")
-                    continue
-
-                # Fallback to a literal name when no ORCID is present
-                family = a.get("family-names")
-                given = a.get("given-names")
-                name = a.get("name")
-                label = None
-                if isinstance(name, str) and name.strip():
-                    label = name.strip()
-                elif isinstance(family, str) and isinstance(given, str):
-                    label = f"{family.strip()}, {given.strip()}"
-                elif isinstance(family, str) and family.strip():
-                    label = family.strip()
-                if label:
-                    lab_lit = '"' + label.replace('"', '\\"') + '"'
-                    derived.append(f"{subj_uri} dct:creator {lab_lit} .")
-                    derived.append(f"{subj_uri} schema:creator {lab_lit} .")
 
         citation_triples = derived
 
-    # ---------- Append (post-processed) citation triples ----------
+    # Append (post-processed) citation triples
     post = _postprocess_citation_triples(citation_triples, tracker=tracker)
     for t in post:
         lines.append(t)
@@ -1419,29 +1409,24 @@ def crosswalk_to_rdf_turtle(
 
     lines.append("")
 
-    # --------------------------------------------------
-    # JSON provenance report (console + file)
-    # --------------------------------------------------
+    # JSON provenance report
     out_dir = Path(info.get("output_dir", "output"))
     try:
         out_dir.mkdir(parents=True, exist_ok=True)
     except Exception:
-        # fallback
         out_dir = Path.cwd()
 
     report_path = out_dir / "rdf_modelling_report.json"
     try:
         tracker.write_json(report_path)
-        print(f"\n✔ JSON provenance report written: {report_path.resolve()}")
+        print(f"✔ JSON provenance report written: {report_path.resolve()}")
     except Exception as e:
-        print(f"\n⚠ Could not write JSON provenance report to {report_path}: {e}")
+        print(f"⚠ Could not write JSON provenance report to {report_path}: {e}")
 
-    # small console summary
     try:
         rep = tracker.report()
         keys = sorted(rep.get("summary", {}).keys())
         print(f"ℹ Provenance fields recorded: {len(keys)}")
-        # show a few most relevant
         for k in [k for k in keys if k.startswith("dataset.")][:10]:
             print(f"  - {k}: {', '.join(rep['summary'][k]['sources'])}")
         print(
@@ -1453,8 +1438,7 @@ def crosswalk_to_rdf_turtle(
     except Exception:
         pass
 
-    # Append any triples that must appear outside the dataset block
     if post_dataset_triples:
         lines.extend(post_dataset_triples)
 
-    return "\n".join(lines)
+    return "".join(lines)

@@ -21,9 +21,9 @@ from fdo import crosswalk_to_rdf_turtle
 # PACKAGE_SOURCE = "C:/git/fdo-squirrel/example_fdo.zip" #example
 
 # PACKAGE_SOURCE = "C:/tmp/fdo/o3d-epidoc-extractor.zip"
-# PACKAGE_SOURCE = "C:/tmp/fdo/ogham-analysis.zip"
+PACKAGE_SOURCE = "C:/tmp/fdo/ogham-analysis.zip"
 # PACKAGE_SOURCE = "C:/tmp/fdo/CHUIS_1.zip"
-PACKAGE_SOURCE = "C:/tmp/fdo/GEARS_1.zip"
+# PACKAGE_SOURCE = "C:/tmp/fdo/GEARS_1.zip"
 
 
 def _normalise_report(report: dict) -> list[dict]:
