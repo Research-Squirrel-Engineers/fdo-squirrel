@@ -3,27 +3,21 @@ import json
 import html
 from datetime import datetime
 
-
 from ingest.package_source import load_package_from_source
 from ingest import load_md_cff_schema, validate_against_schema
 from crosswalks import md_cff_to_crosswalk
 from crosswalks.citation_crosswalk_engine import CitationCrosswalkEngine
 from fdo import crosswalk_to_rdf_turtle
 
-
 # --------------------------------------------------
-# HARDCODED FDO PACKAGE (VARIANT C)
+# HARDCODED FDO PACKAGE
 # --------------------------------------------------
 # This can be a DOI, landing page, or direct ZIP URL.
-# Example (DOI):
-# PACKAGE_SOURCE = "https://doi.org/10.1234/fdo.demo.3d.001"
-# Example (direct ZIP):
-# PACKAGE_SOURCE = "C:/git/fdo-squirrel/example_fdo.zip" #example
 
-# PACKAGE_SOURCE = "C:/tmp/fdo/o3d-epidoc-extractor.zip"
-PACKAGE_SOURCE = "C:/tmp/fdo/ogham-analysis.zip"
-# PACKAGE_SOURCE = "C:/tmp/fdo/CHUIS_1.zip"
-# PACKAGE_SOURCE = "C:/tmp/fdo/GEARS_1.zip"
+# PACKAGE_SOURCE = "C:/tmp/fdo/o3d-epidoc-extractor.zip" # fdo:SoftwareFDO
+PACKAGE_SOURCE = "C:/tmp/fdo/ogham-analysis.zip"  # fdo:AnalysisFDO
+# PACKAGE_SOURCE = "C:/tmp/fdo/CHUIS_1.zip" # fdo:3DDataFDO
+# PACKAGE_SOURCE = "C:/tmp/fdo/GEARS_1.zip" # fdo:3DDataFDO
 
 
 def _normalise_report(report: dict) -> list[dict]:
