@@ -1,0 +1,27 @@
+---
+config:
+  layout: dagre
+---
+flowchart LR
+ subgraph ZIP["FDO ZIP Package"]
+        MD["MD.cff <br> Descriptive Metadata"]
+        CFF["CITATION.cff <br> Citation Metadata"]
+        DATA["Data / Software / Models"]
+  end
+ subgraph FDO["fdo-squirrel"]
+        INGEST["Metadata ingest"]
+        CROSSWALK["Crosswalk & Mapping Rules"]
+        ROLES["Role classification <br> ZIP → Distribution"]
+        PROV["Provenance tracking"]
+  end
+ subgraph RDF["Derived Outputs"]
+        TTL["fdo-metadata.ttl\nDCAT + FDO + CIDOC CRM / CRMdig <br> + GeoSPARQL"]
+        REPORT["rdf_modelling_report <br> (JSON / HTML)"]
+  end
+    MD --> INGEST
+    CFF --> INGEST
+    DATA --> ROLES
+    INGEST --> CROSSWALK & PROV
+    CROSSWALK --> TTL & PROV
+    ROLES --> TTL & PROV
+    PROV --> REPORT
