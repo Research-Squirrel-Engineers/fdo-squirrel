@@ -627,6 +627,67 @@ def _zip_members_with_hashes(
             count_inc=len(members),
         )
 
+
+def _load_citation_raw_from_zip(
+    info: Optional[Dict[str, Any]],
+    tracker: Optional[ProvenanceTracker] = None,
+) -> Optional[Dict[str, Any]]:
+    """Best-effort: read CITATION.cff from the ZIP path in info and return it as dict.
+
+    This allows consistent CITATION triple generation even if the caller did not
+    forward the parsed CITATION.cff content.
+    """
+    if not info or not isinstance(info, dict):
+        return None
+
+    zip_path = _get_project_root_from_info(info)
+    if not zip_path:
+        return None
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            # Common locations / names
+            candidates = ["CITATION.cff", "citation.cff", "CITATION.CFF"]
+            name_in_zip = None
+            for n in candidates:
+                try:
+                    zf.getinfo(n)
+                    name_in_zip = n
+                    break
+                except KeyError:
+                    continue
+
+            if not name_in_zip:
+                # fallback: search case-insensitive
+                lower_map = {zi.filename.lower(): zi.filename for zi in zf.infolist()}
+                if "citation.cff" in lower_map:
+                    name_in_zip = lower_map["citation.cff"]
+
+            if not name_in_zip:
+                return None
+
+            raw_txt = zf.read(name_in_zip).decode("utf-8", errors="replace")
+            data = yaml.safe_load(raw_txt)
+            if isinstance(data, dict):
+                if tracker:
+                    tracker.record(
+                        field="citation.raw",
+                        source="CITATION.cff",
+                        detail={"mode": "read from ZIP", "path": name_in_zip},
+                        count_inc=1,
+                    )
+                return data
+    except Exception as e:
+        if tracker:
+            tracker.record(
+                field="citation.raw",
+                source="CITATION.cff",
+                detail={"mode": "read from ZIP failed", "error": str(e)},
+            )
+        return None
+
+    return None
+
     return members
 
 
@@ -813,6 +874,7 @@ def crosswalk_to_rdf_turtle(
     cw: CrosswalkRecord,
     citation_triples: list[str],
     info: Optional[Dict[str, Any]] = None,
+    citation_raw: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Write Turtle similar to the earlier "full" fdo-metadata.ttl:
@@ -1276,6 +1338,73 @@ def crosswalk_to_rdf_turtle(
             lines[-1] = lines[-1].rstrip() + " ."
 
         lines.append("")
+
+    # If the caller did not forward parsed CITATION.cff content, attempt to
+    # load it from the ZIP to keep outputs consistent across FDO types.
+    if (not citation_triples) and (citation_raw is None):
+        citation_raw = _load_citation_raw_from_zip(info, tracker=tracker)
+
+    # ---------- Ensure CITATION.cff is expanded for all FDO types ----------
+    # Some pipelines may pass an empty citation_triples list for Software/Analysis FDOs.
+    # If raw CITATION.cff content is available, derive a minimal, type-agnostic set of
+    # citation-related triples here to ensure consistent outputs and reporting.
+    if (not citation_triples) and citation_raw:
+        subj_uri = subj  # e.g., <https://doi.org/...>
+        derived: list[str] = []
+
+        # --- License (keep as literal; post-processing will upgrade to SPDX URIs where possible) ---
+        lic = citation_raw.get("license")
+        if isinstance(lic, str) and lic.strip():
+            lic_lit = '"' + lic.strip().replace('"', '\\"') + '"'
+            # Emit common predicates seen in other FDO types
+            derived.append(f"{subj_uri} cff:license {lic_lit} .")
+            derived.append(f"{subj_uri} cff:license-url {lic_lit} .")
+            derived.append(f"{subj_uri} schema:license {lic_lit} .")
+            derived.append(f"{subj_uri} codemeta:license {lic_lit} .")
+            derived.append(f"{subj_uri} wdt:P275 {lic_lit} .")
+
+        # --- Keywords ---
+        kws = citation_raw.get("keywords")
+        if isinstance(kws, list):
+            for kw in kws:
+                if not isinstance(kw, str) or not kw.strip():
+                    continue
+                kw_lit = '"' + kw.strip().replace('"', '\\"') + '"'
+                derived.append(f"{subj_uri} cff:keywords {kw_lit} .")
+                derived.append(f"{subj_uri} schema:keywords {kw_lit} .")
+                derived.append(f"{subj_uri} codemeta:keywords {kw_lit} .")
+                derived.append(f"{subj_uri} wdt:P921 {kw_lit} .")
+
+        # --- Creators / Authors ---
+        authors = citation_raw.get("authors")
+        if isinstance(authors, list):
+            for a in authors:
+                if not isinstance(a, dict):
+                    continue
+                orcid = a.get("orcid")
+                if isinstance(orcid, str) and orcid.strip().startswith("http"):
+                    # Treat ORCID as an identifier URI
+                    derived.append(f"{subj_uri} dct:creator <{orcid.strip()}> .")
+                    derived.append(f"{subj_uri} schema:creator <{orcid.strip()}> .")
+                    continue
+
+                # Fallback to a literal name when no ORCID is present
+                family = a.get("family-names")
+                given = a.get("given-names")
+                name = a.get("name")
+                label = None
+                if isinstance(name, str) and name.strip():
+                    label = name.strip()
+                elif isinstance(family, str) and isinstance(given, str):
+                    label = f"{family.strip()}, {given.strip()}"
+                elif isinstance(family, str) and family.strip():
+                    label = family.strip()
+                if label:
+                    lab_lit = '"' + label.replace('"', '\\"') + '"'
+                    derived.append(f"{subj_uri} dct:creator {lab_lit} .")
+                    derived.append(f"{subj_uri} schema:creator {lab_lit} .")
+
+        citation_triples = derived
 
     # ---------- Append (post-processed) citation triples ----------
     post = _postprocess_citation_triples(citation_triples, tracker=tracker)
