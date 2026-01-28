@@ -1,5 +1,7 @@
 # FAIR Digital Object Squirrel Implementation (FDOSquirrel)
 
+![FDOSquirrel logo](logo.png)
+
 **v0.1 – Reference implementation (ZIP-based FDO → RDF)**
 
 `fdo-squirrel` is a **reference implementation for modelling FAIR Digital Objects (FDOs)** from self-contained ZIP packages into **machine-readable RDF**.  
