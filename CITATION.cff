@@ -2,7 +2,7 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: Gradual Semantic Alignment for SKOS (GSAS)
+title: FAIR Digital Object Squirrel Implementation (FDOSquirrel)
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -13,20 +13,15 @@ authors:
     email: mail@fthiery.de
     affiliation: Research Squirrel Engineers Network
     orcid: "https://orcid.org/0000-0002-3246-3531"
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.18404885
 repository-code: >-
-  https://github.com/Research-Squirrel-Engineers/fuzzy-wobbly-semanticalignment
-abstract: >-
-  This repository implements a reference framework for
-  gradual semantic alignment in SKOS. It formalises mapping
-  relations as graded object properties with numeric degrees
-  of connection, integrates a 7-star refinement model, and
-  grounds semantic relations in empirical perceptions of
-  probability. All components are provided as interoperable
-  RDF and reproducible software artefacts.
+  https://github.com/Research-Squirrel-Engineers/fdo-squirrel/
 keywords:
-  - SKOS
+  - FAIR Digital Object
   - RDF
-  - uncertainty
+  - Federated Knowledge Graph Ecosystem
 license: MIT
 version: v0.1
-date-released: "2026-01-21"
+date-released: "2026-01-28"
