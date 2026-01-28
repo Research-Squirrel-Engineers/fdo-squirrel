@@ -12,7 +12,7 @@ authors:
     family-names: Thiery
     email: mail@fthiery.de
     affiliation: Research Squirrel Engineers Network
-    orcid: 'https://orcid.org/0000-0002-3246-3531'
+    orcid: "https://orcid.org/0000-0002-3246-3531"
 repository-code: >-
   https://github.com/Research-Squirrel-Engineers/fuzzy-wobbly-semanticalignment
 abstract: >-
@@ -29,4 +29,4 @@ keywords:
   - uncertainty
 license: MIT
 version: v0.1
-date-released: '2026-01-21'
+date-released: "2026-01-21"

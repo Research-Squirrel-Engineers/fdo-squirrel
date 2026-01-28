@@ -1,4 +1,4 @@
-# fdo-squirrel
+# FAIR Digital Object Squirrel Implementation (FDOSquirrel)
 
 **v0.1 – Reference implementation (ZIP-based FDO → RDF)**
 
