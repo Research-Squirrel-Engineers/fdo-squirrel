@@ -53,8 +53,20 @@ class ProvenanceTracker:
             s = e["source"]
             agg.setdefault(f, {"sources": set(), "examples": []})
             agg[f]["sources"].add(s)
-            # keep a few examples only
-            if len(agg[f]["examples"]) < 5 and e.get("detail"):
+            # distribution.*: keep filename only (technical details not needed)
+            if f.startswith("distribution."):
+                file_name = (
+                    e.get("detail", {}).get("file")
+                    if isinstance(e.get("detail"), dict)
+                    else None
+                )
+                if file_name:
+                    agg[f]["examples"].append(file_name)
+            # distributions (per-file full objects): no cap, store all
+            elif f == "distributions":
+                if e.get("detail"):
+                    agg[f]["examples"].append(e["detail"])
+            elif len(agg[f]["examples"]) < 5 and e.get("detail"):
                 agg[f]["examples"].append(e["detail"])
 
         # make JSON-serializable
@@ -577,10 +589,15 @@ def _apply_md_cff_mapping(
                 else:
                     inline.append(f"    {pred} {_ttl_lit(v)} ;")
 
+            # Store the first actual value so the HTML report can show it
+            first_val = next((v for v in values if v is not None), None)
             tracker.record(
                 field=f"dataset.{key}",
                 source="MD.cff",
-                detail={"value_type": vtype},
+                detail={
+                    "value": str(first_val) if first_val is not None else None,
+                    "value_type": vtype,
+                },
                 count_inc=len(values),
             )
 
@@ -1208,10 +1225,11 @@ def crosswalk_to_rdf_turtle(
 
     if creators_to_use:
         creators_source = "CITATION.cff" if derived_creators else "MD.cff"
+        creator_names = [clabel for _, clabel in creators_to_use]
         tracker.record(
             field="dataset.creators",
             source=creators_source,
-            detail={"count": len(creators_to_use)},
+            detail={"value": ", ".join(creator_names)},
             count_inc=len(creators_to_use),
         )
 
@@ -1424,6 +1442,24 @@ def crosswalk_to_rdf_turtle(
                 detail={"file": name},
                 count_inc=1,
             )
+
+        # Record complete per-file entry for the HTML report ZIP section
+        tracker.record(
+            field="distributions",
+            source="ZIP",
+            detail={
+                "path": name,
+                "role": role,
+                "mediaType": mt,
+                "byteSize": size if isinstance(size, int) else None,
+                "sha256": (
+                    sha256_hex[:16]
+                    if isinstance(sha256_hex, str) and len(sha256_hex) >= 16
+                    else None
+                ),
+            },
+            count_inc=0,
+        )
 
         if lines[-1].strip().endswith(";"):
             lines[-1] = lines[-1].rstrip().rstrip(";") + " ."
