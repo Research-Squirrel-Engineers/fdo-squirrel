@@ -9,6 +9,7 @@ from ingest import load_md_cff_schema, validate_against_schema
 from crosswalks import md_cff_to_crosswalk
 from crosswalks.citation_crosswalk_engine import CitationCrosswalkEngine
 from fdo import crosswalk_to_rdf_turtle
+from fdo_mermaid import FDOMermaidGenerator
 
 # --------------------------------------------------
 # HARDCODED FDO PACKAGE
@@ -336,7 +337,11 @@ def main():
     # --------------------------------------------------
     project_root = Path(__file__).resolve().parent
     output_dir = project_root / "output"
-    output_dir.mkdir(exist_ok=True)
+    import shutil
+
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir()
 
     output_path = output_dir / "fdo-metadata.ttl"
 
@@ -390,6 +395,21 @@ def main():
             json_report_path = alt
 
     write_html_report(json_report_path, output_dir / "rdf_modelling_report.html", info)
+
+    # --------------------------------------------------
+    # Write Mermaid overview diagram
+    # --------------------------------------------------
+    mermaid_path = output_dir / "fdo_overview.mermaid"
+    try:
+        gen = FDOMermaidGenerator(
+            ttl_path=output_path,
+            html_path=output_dir / "rdf_modelling_report.html",
+        )
+        gen.save(mermaid_path)
+        print(f"✔ Mermaid diagram written to {mermaid_path}")
+    except Exception as e:
+        print(f"⚠ Mermaid generation skipped: {e}")
+
     print(f"✔ RDF written to {output_path}")
     print(f"✔ Package source: {package_source}")
 

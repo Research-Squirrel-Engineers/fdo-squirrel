@@ -307,7 +307,7 @@ def _md_get(root: Any, key: str) -> Any:
 
 
 def _ttl_escape(s: str) -> str:
-    return s.replace("\\", "\\\\").replace('"', '"').replace("\n", "\\n")
+    return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 def _ttl_lit(value: Any, datatype: Optional[str] = None) -> str:
