@@ -605,7 +605,12 @@ def _apply_md_cff_mapping(
 
 
 def _spdx_url(license_value: Any) -> Optional[str]:
-    """Return SPDX URL for string or {id,label} dict (MD.cff license)."""
+    """Return SPDX URL for string or {id,label} dict (MD.cff license).
+    Normalises human-readable license strings to SPDX kebab-case identifiers,
+    e.g. "CC BY 4.0" → "CC-BY-4.0" → https://spdx.org/licenses/CC-BY-4.0.html
+    """
+    import re as _re
+
     if license_value is None:
         return None
     if isinstance(license_value, dict):
@@ -616,6 +621,9 @@ def _spdx_url(license_value: Any) -> Optional[str]:
         return None
     if lid.startswith(("http://", "https://")):
         return lid
+    # Normalise to SPDX kebab-case: collapse whitespace runs to single hyphens
+    lid = _re.sub(r"\s+", "-", lid)
+    lid = _re.sub(r"-+", "-", lid)
     return f"https://spdx.org/licenses/{lid}.html"
 
 
