@@ -72,15 +72,39 @@ fdo_classes:
     default_role: data
     rules:
       - match:
-          extension: [".obj", ".ply", ".stl", ".glb", ".gltf"]
+          extension:
+            [
+              ".obj",
+              ".ply",
+              ".stl",
+              ".glb",
+              ".gltf",
+              ".nxs",
+              ".nxz",
+              ".xyz",
+              ".pts",
+              ".ptx",
+              ".dae",
+            ]
         role: model
 
       - match:
-          extension: [".jpg", ".jpeg", ".png", ".tif", ".tiff"]
+          extension:
+            [
+              ".jpg",
+              ".jpeg",
+              ".png",
+              ".tif",
+              ".tiff",
+              ".pdf",
+              ".csv",
+              ".xml",
+              ".json",
+            ]
         role: documentation
 
       - match:
-          extension: [".xyz", ".las", ".laz"]
+          extension: [".las", ".laz"]
         role: data
 
       - match:

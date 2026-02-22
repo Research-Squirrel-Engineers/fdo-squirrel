@@ -15,10 +15,7 @@ from fdo import crosswalk_to_rdf_turtle
 # --------------------------------------------------
 # This can be a DOI, landing page, or direct ZIP URL.
 
-# PACKAGE_SOURCE = "C:/tmp/fdo/o3d-epidoc-extractor.zip" # fdo:SoftwareFDO
-PACKAGE_SOURCE = "C:/tmp/fdo/ogham-analysis.zip"  # fdo:AnalysisFDO
-# PACKAGE_SOURCE = "C:/tmp/fdo/CHUIS_1.zip" # fdo:3DDataFDO
-# PACKAGE_SOURCE = "C:/tmp/fdo/GEARS_1.zip" # fdo:3DDataFDO
+PACKAGE_SOURCE = ""
 
 
 def resolve_package_source(default_value: str) -> str:

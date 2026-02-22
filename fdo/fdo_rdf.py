@@ -114,25 +114,85 @@ def _classify_role(
     rules = class_cfg.get("rules") or []
 
     ext = Path(filename).suffix.lower()
+    basename = Path(filename).name
 
     for rule in rules:
         match = rule.get("match") or {}
-        exts = match.get("extension") or []
-        if isinstance(exts, list) and ext in [e.lower() for e in exts]:
-            role = rule.get("role") or default_role
+        role = rule.get("role") or default_role
+
+        # 1) filename: exact match (e.g. "MD.cff", "CITATION.cff")
+        filenames = match.get("filename") or []
+        if isinstance(filenames, list) and basename in filenames:
             if tracker:
                 tracker.record(
                     field="distribution.role",
                     source="ZIP + classification_rules.yaml",
                     detail={
                         "file": filename,
-                        "ext": ext,
+                        "matched": "filename",
                         "role": role,
                         "fdo_type": fdo_type,
                     },
                     count_inc=1,
                 )
             return role
+
+        # 2) filename_prefix + extension (e.g. README.md)
+        prefixes = match.get("filename_prefix") or []
+        exts = match.get("extension") or []
+        if isinstance(prefixes, list) and prefixes:
+            if any(basename.startswith(p) for p in prefixes):
+                if not exts or ext in [e.lower() for e in exts]:
+                    if tracker:
+                        tracker.record(
+                            field="distribution.role",
+                            source="ZIP + classification_rules.yaml",
+                            detail={
+                                "file": filename,
+                                "matched": "filename_prefix",
+                                "role": role,
+                                "fdo_type": fdo_type,
+                            },
+                            count_inc=1,
+                        )
+                    return role
+
+        # 3) path_prefix (e.g. "textures/")
+        path_prefixes = match.get("path_prefix") or []
+        if isinstance(path_prefixes, list) and any(
+            filename.startswith(p) for p in path_prefixes
+        ):
+            if tracker:
+                tracker.record(
+                    field="distribution.role",
+                    source="ZIP + classification_rules.yaml",
+                    detail={
+                        "file": filename,
+                        "matched": "path_prefix",
+                        "role": role,
+                        "fdo_type": fdo_type,
+                    },
+                    count_inc=1,
+                )
+            return role
+
+        # 4) extension only
+        if isinstance(exts, list) and exts and not prefixes:
+            if ext in [e.lower() for e in exts]:
+                if tracker:
+                    tracker.record(
+                        field="distribution.role",
+                        source="ZIP + classification_rules.yaml",
+                        detail={
+                            "file": filename,
+                            "matched": "extension",
+                            "ext": ext,
+                            "role": role,
+                            "fdo_type": fdo_type,
+                        },
+                        count_inc=1,
+                    )
+                return role
 
     if tracker:
         tracker.record(
@@ -599,7 +659,10 @@ def _zip_members_with_hashes(
                 detail={"count": len(members)},
                 count_inc=len(members),
             )
-    # Fallback: best-effort if ingest already provided members
+    # Fallback: only if we got nothing from the ZIP file directly
+    if members:
+        return members
+
     candidates = None
     for key in ("zip_members", "members", "zip_content", "files"):
         if key in info:
