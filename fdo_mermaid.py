@@ -123,8 +123,9 @@ def _extract_from_ttl(ttl_path: Path, meta: FDOMetadata) -> None:
 
     spatial = g.value(ds, DCTERMS.spatial)
     if spatial:
-        m = re.search(r"relation/(\d+)", _s(spatial))
-        meta.spatial_osm = f"OSM Relation {m.group(1)}" if m else _s(spatial)
+        s = _s(spatial)
+        m = re.search(r"(relation|node|way)/(\d+)", s)
+        meta.spatial_osm = f"OSM {m.group(1)}/{m.group(2)}" if m else s
     lat = g.value(ds, SCHEMA.latitude)
     lon = g.value(ds, SCHEMA.longitude)
     if lat:
