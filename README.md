@@ -1,10 +1,12 @@
-# FAIR Digital Object Squirrel Implementation (FDOSquirrel)
+# FAIR Data Object, exchangeable — Squirrel Implementation (FDOx Squirrel)
 
-![FDOSquirrel logo](logo.png)
+![FDOx Squirrel logo](logo.png)
 
-**v0.1 – Reference implementation (ZIP-based FDO → RDF)**
+**v0.1 – Reference implementation (ZIP-based FDOx → RDF)**
 
-`fdo-squirrel` is a **reference implementation for modelling FAIR Digital Objects (FDOs)** from self-contained ZIP packages into **machine-readable RDF**.  
+> *FDOx (FAIR Data Object, exchangeable) is a reference implementation of the FAIR Digital Object (FDO) framework, emphasising exchangeability through Linked Open Data and a Wikibase-compatible RDF vocabulary.*
+
+`fdo-squirrel` is a **reference implementation for modelling FAIR Data Objects, exchangeable (FDOx)** from self-contained ZIP packages into **machine-readable RDF**.  
 It demonstrates a **package-centric, reproducible crosswalk** from community-standard metadata files to interoperable knowledge graph representations.
 
 ---
@@ -16,14 +18,14 @@ Given a **ZIP package as Source of Truth**, `fdo-squirrel`:
 - reads **descriptive metadata** from `MD.cff`
 - reads **citation metadata** from `CITATION.cff`
 - inspects the **ZIP contents** (files, sizes, checksums)
-- generates a **single RDF/Turtle representation** of the FDO
+- generates a **single RDF/Turtle representation** of the FDOx
 - records **provenance** for every mapped field
 
-The result is a **self-describing FDO** that can be ingested into RDF-based infrastructures and knowledge graphs.
+The result is a **self-describing FDOx** that can be ingested into RDF-based infrastructures and knowledge graphs.
 
 ### Architecture overview
 
-![ZIP-centric FDO modelling workflow](architecture.png)
+![ZIP-centric FDOx modelling workflow](architecture.png)
 
 ---
 
@@ -41,7 +43,7 @@ The input **must be a ZIP file** containing at least:
 ### 2. `MD.cff`
 - Valid according to the **project-specific MD.cff schema**
 - Used for:
-  - FDO type (`fdo:SoftwareFDO`, `fdo:AnalysisFDO`, `fdo:3DDataFDO`)
+  - FDOx type (`fdo:SoftwareFDO`, `fdo:AnalysisFDO`, `fdo:3DDataFDO`)
   - title, description, version
   - licence, publisher
   - spatial and temporal metadata
@@ -58,9 +60,9 @@ The input **must be a ZIP file** containing at least:
 Running the pipeline produces:
 
 - **`fdo-metadata.ttl`**  
-  RDF/Turtle representation of the FDO, combining:
+  RDF/Turtle representation of the FDOx, combining:
   - DCAT
-  - FDO vocabulary
+  - FDOx vocabulary
   - CIDOC CRM / CRMdig
   - GeoSPARQL (if applicable)
 
@@ -82,7 +84,7 @@ Create a local file **`config.local.json`** (not committed):
 
 ```json
 {
-  "package_source": "C:/tmp/fdo/ogham-analysis.zip"
+  "package_source": "C:/tmp/fdox/ogham-analysis.zip"
 }
 ```
 
@@ -97,7 +99,7 @@ python main.py
 ### Option B – via command line (one-off runs)
 
 ```bash
-python main.py --package "C:/tmp/fdo/GEARS_1.zip"
+python main.py --package "C:/tmp/fdox/GEARS_1.zip"
 ```
 
 This overrides any local configuration.
@@ -130,10 +132,10 @@ The focus is **correctness, transparency, and explainability**, not performance 
 
 ## Why this matters
 
-`fdo-squirrel` shows how **FAIR Digital Objects can be modelled as self-contained, package-based entities**, where:
+`fdo-squirrel` shows how **FAIR Data Objects, exchangeable (FDOx) can be modelled as self-contained, package-based entities**, where:
 
 - metadata and data stay together
 - RDF is derived, not manually curated
 - provenance is explicit and reproducible
 
-This makes FDOs suitable for **long-term reuse, federation, and knowledge graph integration**.
+This makes FDOx suitable for **long-term reuse, federation, and knowledge graph integration**.
