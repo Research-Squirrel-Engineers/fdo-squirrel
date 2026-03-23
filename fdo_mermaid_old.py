@@ -14,8 +14,6 @@ Usage as module:
 
 Dependencies:
     pip install rdflib beautifulsoup4
-Optional:
-    pip install pyyaml
 """
 
 from __future__ import annotations
@@ -62,86 +60,128 @@ def _sanitize_ttl(ttl: str) -> str:
         m = re.match(r'(\s*\S+\s+)"(.*)"(\s*[;,.]?\s*)$', line, re.DOTALL)
         if m:
             inner = m.group(2)
-            temp = inner.replace('\\"', '__ESCAPED_QUOTE__')
+            temp = inner.replace('\\"', "\x00")
             if '"' in temp:
                 temp = temp.replace('"', '\\"')
-                inner = temp.replace('__ESCAPED_QUOTE__', '\\"')
+                inner = temp.replace("\x00", '\\"')
                 line = f'{m.group(1)}"{inner}"{m.group(3)}'
         lines.append(line)
     return "".join(lines)
 
 
-def _normalize_license(value: str) -> str:
-    if not value or value == "?":
-        return "?"
-    s = str(value).strip()
-    if s.startswith("https://spdx.org/licenses/") or s.startswith("http://spdx.org/licenses/"):
-        s = s.rstrip("/").split("/")[-1]
-        s = re.sub(r"\.html?$", "", s, flags=re.IGNORECASE)
-    if s in {"CC-BY-4.0", "CC_BY_4.0", "CC-BY-4.0.html"}:
-        return "CC-BY-4.0"
-    return s
-
-
-def _append_unique(items: list[str], value: str) -> None:
-    value = value.strip()
-    if value and value not in items:
-        items.append(value)
-
-
 def _extract_from_ttl(ttl_path: Path, meta: FDOMetadata) -> None:
+    from rdflib import Graph, Namespace, RDF, OWL
+    from rdflib.namespace import DCTERMS
+
+    SCHEMA = Namespace("https://schema.org/")
+    DCAT_NS = Namespace("http://www.w3.org/ns/dcat#")
+
+    g = Graph()
     raw_ttl = ttl_path.read_text(encoding="utf-8")
+    try:
+        g.parse(data=_sanitize_ttl(raw_ttl), format="turtle")
+    except Exception:
+        try:
+            g.parse(data=raw_ttl, format="turtle")
+        except Exception:
+            return
 
-    def grab(pattern: str) -> str | None:
-        m = re.search(pattern, raw_ttl, re.DOTALL)
-        return m.group(1).strip() if m else None
+    datasets = list(g.subjects(RDF.type, DCAT_NS.Dataset))
+    if not datasets:
+        return
+    ds = datasets[0]
 
-    ds = grab(r'(?m)^(<[^>]+>)\s+a\s+dcat:Dataset')
-    if ds:
-        meta.doi = ds.strip('<>')
+    def _s(val) -> str:
+        return str(val).strip() if val is not None else "?"
 
-    title = grab(r'dct:title\s+"([^"]+)"')
-    if title:
-        meta.title = title
+    meta.doi = _s(ds)
+    meta.title = _s(g.value(ds, DCTERMS.title))
+    meta.version = _s(g.value(ds, DCTERMS.hasVersion))
+    meta.date_created = _s(g.value(ds, DCTERMS.created))
+    meta.license = _s(g.value(ds, DCTERMS.license))
+    if "CC-BY-4.0" in meta.license or "CC_BY_4.0" in meta.license:
+        meta.license = "CC-BY-4.0"
 
-    version = grab(r'dct:hasVersion\s+"([^"]+)"')
-    if version:
-        meta.version = version
+    creator_node = g.value(ds, DCTERMS.creator)
+    if creator_node:
+        meta.creator = _s(g.value(creator_node, SCHEMA.name))
+    publisher_node = g.value(ds, DCTERMS.publisher)
+    if publisher_node:
+        meta.publisher = _s(g.value(publisher_node, SCHEMA.name))
 
-    created = grab(r'dct:created\s+"([^"]+)"')
-    if created:
-        meta.date_created = created
+    obj_type = g.value(ds, DCTERMS.type)
+    if obj_type:
+        meta.object_wikidata = _s(obj_type).replace(
+            "http://www.wikidata.org/entity/", "wd:"
+        )
+    material = g.value(ds, DCTERMS.subject)
+    if material:
+        meta.material_wikidata = _s(material).replace(
+            "http://www.wikidata.org/entity/", "wd:"
+        )
 
-    license_val = grab(r'dct:license\s+<([^>]+)>') or grab(r'dct:license\s+"([^"]+)"')
-    if license_val:
-        meta.license = _normalize_license(license_val)
+    spatial = g.value(ds, DCTERMS.spatial)
+    if spatial:
+        s = _s(spatial)
+        m = re.search(r"(relation|node|way)/(\d+)", s)
+        meta.spatial_osm = f"OSM {m.group(1)}/{m.group(2)}" if m else s
+    lat = g.value(ds, SCHEMA.latitude)
+    lon = g.value(ds, SCHEMA.longitude)
+    if lat:
+        meta.latitude = _s(lat)
+    if lon:
+        meta.longitude = _s(lon)
 
-    # creators and publishers from IRIs are often resolved better from MD.cff later
-    creators = re.findall(r'dct:creator\s+<([^>]+)>', raw_ttl)
-    if creators and meta.creator == '?':
-        meta.creator = ", ".join(creators)
+    temporal_node = g.value(ds, DCTERMS.temporal)
+    if temporal_node:
+        same_as = g.value(temporal_node, OWL.sameAs)
+        if same_as:
+            m = re.search(r"period/(\w+)", _s(same_as))
+            meta.temporal_id = f"ChronOntology {m.group(1)}" if m else _s(same_as)
+        start = g.value(temporal_node, DCAT_NS.startDate)
+        end = g.value(temporal_node, DCAT_NS.endDate)
+        if start:
+            meta.temporal_start = _s(start)
+        if end:
+            meta.temporal_end = _s(end)
 
-    publishers = re.findall(r'dct:publisher\s+<([^>]+)>', raw_ttl)
-    if publishers and meta.publisher == '?':
-        meta.publisher = ", ".join(publishers)
+    for prov in g.objects(ds, DCTERMS.provenance):
+        prov_s = _s(prov)
+        m = re.search(r'"software":\s*"([^"]+)"', prov_s)
+        if m:
+            meta.technique = m.group(1) + " (Photogrammetry)"
+            break
+        m = re.search(r"'software':\s*'([^']+)'", prov_s)
+        if m:
+            meta.technique = m.group(1)
+            break
 
-    for kw in re.findall(r'dcat:keyword\s+(.*?);', raw_ttl, re.DOTALL):
-        for lit in re.findall(r'"([^"]+)"', kw):
-            _append_unique(meta.keywords, lit)
+    CONDITION_VALS = {"good", "fair", "poor", "bad", "excellent"}
+    URGENCY_VALS = {"low", "medium", "high", "critical"}
+    for d in g.objects(ds, DCTERMS.description):
+        dl = _s(d).lower()
+        if dl in CONDITION_VALS:
+            meta.condition = _s(d)
+        if dl in URGENCY_VALS:
+            meta.urgency = _s(d)
 
-    # distributions
-    dist_blocks = re.findall(
+    # Distributions — block-level regex on raw TTL
+    import re as _re
+
+    dist_blocks = _re.findall(
         r'<urn:fdo-squirrel:dist/[^>]+>\s+a\s+dcat:Distribution.*?fdo:sha256\s+"[^"]*"\s*\.',
         raw_ttl,
-        re.DOTALL,
+        _re.DOTALL,
     )
+
     EXCLUDE_ROLES = {"data"}
     EXCLUDE_EXTS = {".ttl", ".html", ".json"}
+
     seen: set[tuple[str, str]] = set()
     for block in dist_blocks:
-        path_m = re.search(r'fdo:path\s+"([^"]+)"', block)
-        role_m = re.search(r'fdo:role\s+"([^"]+)"', block)
-        mime_m = re.search(r'dcat:mediaType\s+"([^"]+)"', block)
+        path_m = _re.search(r'fdo:path\s+"([^"]+)"', block)
+        role_m = _re.search(r'fdo:role\s+"([^"]+)"', block)
+        mime_m = _re.search(r'dcat:mediaType\s+"([^"]+)"', block)
         if path_m and role_m and mime_m:
             path, role, mime = path_m.group(1), role_m.group(1), mime_m.group(1)
             ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
@@ -150,101 +190,6 @@ def _extract_from_ttl(ttl_path: Path, meta: FDOMetadata) -> None:
             if (role, path) not in seen:
                 seen.add((role, path))
                 meta.distributions[role].append((path, mime))
-
-def _extract_from_md_cff(md_path: Path, meta: FDOMetadata) -> None:
-    try:
-        import yaml  # type: ignore
-    except Exception:
-        return
-
-    try:
-        data = yaml.safe_load(md_path.read_text(encoding="utf-8")) or {}
-    except Exception:
-        return
-
-    if meta.title == "?":
-        meta.title = str(data.get("title", "?")).strip() or "?"
-    if meta.version == "?":
-        meta.version = str(data.get("version", "?")).strip() or "?"
-    if meta.date_created == "?":
-        meta.date_created = str(data.get("date_created", "?")).strip() or "?"
-
-    if meta.license == "?":
-        lic = data.get("license")
-        if isinstance(lic, dict):
-            meta.license = _normalize_license(str(lic.get("label") or lic.get("id") or "?"))
-        elif lic:
-            meta.license = _normalize_license(str(lic))
-
-    pubs = data.get("publishers") or []
-    labels = [str(p.get("label", "")).strip() for p in pubs if isinstance(p, dict) and p.get("label")]
-    labels = [x for x in labels if x]
-    if labels:
-        meta.publisher = ", ".join(dict.fromkeys(labels))
-
-    creators = data.get("creators") or []
-    labels = [str(c.get("label", "")).strip() for c in creators if isinstance(c, dict) and c.get("label")]
-    labels = [x for x in labels if x]
-    if labels:
-        meta.creator = ", ".join(dict.fromkeys(labels))
-
-    if not meta.keywords:
-        for kw in data.get("keywords") or []:
-            if isinstance(kw, dict) and kw.get("label"):
-                _append_unique(meta.keywords, str(kw["label"]))
-            elif isinstance(kw, str):
-                _append_unique(meta.keywords, kw)
-
-    if meta.technique == "?":
-        tech = data.get("technique") or {}
-        langs = tech.get("programming_languages") if isinstance(tech, dict) else None
-        repo = tech.get("repository") if isinstance(tech, dict) else None
-        parts = []
-        if isinstance(langs, list) and langs:
-            parts.append("Languages: " + ", ".join(str(x) for x in langs))
-        if isinstance(repo, dict):
-            repo_type = str(repo.get("type", "")).strip()
-            status = str(repo.get("development_status", "")).strip()
-            repo_bits = [x for x in [repo_type, status] if x]
-            if repo_bits:
-                parts.append("Repository: " + " / ".join(repo_bits))
-        if parts:
-            meta.technique = "; ".join(parts)
-
-    spatial = data.get("spatial") or {}
-    if isinstance(spatial, dict):
-        if meta.spatial_osm == "?" and spatial.get("id"):
-            s = str(spatial.get("id", "")).strip()
-            m = re.search(r"(relation|node|way)/(\d+)", s)
-            meta.spatial_osm = f"OSM {m.group(1)}/{m.group(2)}" if m else s
-        if meta.longitude == "?" and spatial.get("lon") is not None:
-            meta.longitude = str(spatial.get("lon"))
-        if meta.latitude == "?" and spatial.get("lat") is not None:
-            meta.latitude = str(spatial.get("lat"))
-
-    temporal = data.get("temporal") or {}
-    if isinstance(temporal, dict):
-        if meta.temporal_id == "?" and temporal.get("id"):
-            tid = str(temporal.get("id", "")).strip()
-            m = re.search(r"period/(\w+)", tid)
-            meta.temporal_id = f"ChronOntology {m.group(1)}" if m else tid
-        if meta.temporal_start == "?" and temporal.get("start") is not None:
-            meta.temporal_start = str(temporal.get("start"))
-        if meta.temporal_end == "?" and temporal.get("end") is not None:
-            meta.temporal_end = str(temporal.get("end"))
-
-    heritage = data.get("heritage_object") or {}
-    if isinstance(heritage, dict):
-        otype = heritage.get("object_type") or {}
-        material = heritage.get("material") or {}
-        if meta.object_label == "?" and isinstance(otype, dict) and otype.get("label"):
-            meta.object_label = str(otype.get("label"))
-        if not meta.object_wikidata and isinstance(otype, dict) and otype.get("id"):
-            meta.object_wikidata = str(otype.get("id")).replace("http://www.wikidata.org/entity/", "wd:")
-        if meta.material_label == "?" and isinstance(material, dict) and material.get("label"):
-            meta.material_label = str(material.get("label"))
-        if not meta.material_wikidata and isinstance(material, dict) and material.get("id"):
-            meta.material_wikidata = str(material.get("id")).replace("http://www.wikidata.org/entity/", "wd:")
 
 
 def _extract_from_html(html_path: Path, meta: FDOMetadata) -> None:
@@ -301,8 +246,8 @@ def _extract_from_html(html_path: Path, meta: FDOMetadata) -> None:
         tds = tr.find_all("td")
         if len(tds) == 2 and tds[0].get_text(strip=True) == "keywords":
             kw = tds[1].get_text(strip=True).strip('"')
-            if kw:
-                _append_unique(meta.keywords, kw)
+            if kw and kw not in meta.keywords:
+                meta.keywords.append(kw)
 
     if meta.condition == "?":
         meta.condition = _get("dataset.heritage_object.overall_condition")
@@ -320,6 +265,7 @@ def _extract_from_html(html_path: Path, meta: FDOMetadata) -> None:
     if meta.doi.startswith("https://doi.org/"):
         meta.doi = meta.doi.replace("https://doi.org/", "")
 
+    # Distributions — only if TTL didn't populate them
     if not meta.distributions:
         for table in soup.find_all("table"):
             headers = [th.get_text(strip=True) for th in table.find_all("th")]
@@ -534,9 +480,6 @@ class FDOMermaidGenerator:
         meta = FDOMetadata()
         if self.ttl_path and self.ttl_path.exists():
             _extract_from_ttl(self.ttl_path, meta)
-            md_path = self.ttl_path.with_name("MD.cff")
-            if md_path.exists():
-                _extract_from_md_cff(md_path, meta)
         if self.html_path and self.html_path.exists():
             _extract_from_html(self.html_path, meta)
         self._meta = meta
