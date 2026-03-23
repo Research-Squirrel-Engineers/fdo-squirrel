@@ -1,0 +1,14 @@
+property,value
+codeRepository,https://linkedopenogham.github.io/o3d-epidoc-extractor/
+context,Ogham Stones in the Wild and in Museums in Ireland bearing Ogham inscriptions.
+created,2019-08-24
+description,LOD Extractor for TEI/EpiDoc Files from the Ogham in 3D Project
+funding,Community Project
+hasVersion,1.1
+issued,2020-08-01
+license,https://spdx.org/licenses/MIT.html
+modified,2024-09-24
+programmingLanguage,JAVA
+programmingLanguage,JavaScript
+title,Ogham 3D EpiDoc Extractor
+type,http://www.wikidata.org/entity/Q2016147
