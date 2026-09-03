@@ -791,6 +791,88 @@ def _zip_members_with_hashes(
     return members
 
 
+def build_generated_distributions_ttl(
+    subject_uri: str,
+    fdo_type: str,
+    files: List[Tuple[Path, Optional[str]]],
+    tracker: Optional[ProvenanceTracker] = None,
+) -> str:
+    """
+    Describe locally generated companion files - the JSON/HTML modelling
+    reports, the mermaid diagram, its rendered JPG - as additional
+    dcat:Distribution entries, using the same content-addressing
+    (urn:fdo-squirrel:dist/<sha256 prefix>), role classification
+    (classification_rules.yaml) and media-type detection that
+    _zip_members_with_hashes()/the main dataset block already use for the
+    original ZIP members. These files do not exist yet while the main
+    dataset block is being built, so this returns a standalone block of
+    triples to append to an already-written fdo-metadata.ttl rather than
+    trying to splice into the (already closed) inline dataset block.
+
+    `files` is a list of (path_on_disk, role_override); pass role_override
+    as None to fall back to the classification rules for `fdo_type`.
+
+    Note on the fdo-metadata.ttl file describing itself: call this with the
+    *already-written* fdo-metadata.ttl still on disk in its pre-append form,
+    so the sha256/byteSize recorded for it are well-defined (a manifest
+    cannot include a hash of its own final bytes - the same limitation any
+    self-describing checksum file has). The bytes actually shipped are this
+    content plus the block this function returns.
+    """
+    if not files:
+        return ""
+
+    rules_cfg = _load_classification_rules(tracker=tracker)
+    lines: List[str] = []
+    dist_uris: List[str] = []
+
+    for path, role_override in files:
+        if not path.exists():
+            continue
+        data = path.read_bytes()
+        size = len(data)
+        sha256_hex = hashlib.sha256(data).hexdigest()
+        name = path.name
+        dist_uri = f"<urn:fdo-squirrel:dist/{sha256_hex[:16]}>"
+        access_url = f"<urn:fdo-squirrel:content/{quote(name, safe='')}>"
+        role = role_override or _classify_role(
+            name, fdo_type, rules_cfg, tracker=tracker
+        )
+        mt = _media_type(name, tracker=tracker)
+
+        dist_uris.append(dist_uri)
+        lines.append(f"{dist_uri} a dcat:Distribution, crmdig:D9_Data_Object ;")
+        lines.append(f"    dcat:accessURL {access_url} ;")
+        lines.append(f"    dcat:byteSize {size} ;")
+        lines.append(f'    dcat:mediaType "{_ttl_escape(mt)}" ;')
+        lines.append(f'    fdo:path "{_ttl_escape(name)}" ;')
+        lines.append(f'    fdo:role "{_ttl_escape(role)}" ;')
+        lines.append(f'    fdo:sha256 "{sha256_hex}" .')
+        lines.append("")
+
+        if tracker:
+            tracker.record(
+                field="distribution.id",
+                source="fdo-squirrel (generated)",
+                detail={"file": name, "dist_uri": dist_uri, "id_basis": "sha256"},
+                count_inc=1,
+            )
+
+    if not dist_uris:
+        return ""
+
+    header = f"{subject_uri} dcat:distribution {','.join(dist_uris)} ."
+    if tracker:
+        tracker.record(
+            field="dataset.distributions.generated",
+            source="fdo-squirrel (generated)",
+            detail={"count": len(dist_uris)},
+            count_inc=len(dist_uris),
+        )
+
+    return header + "\n\n" + "\n".join(lines)
+
+
 def _load_md_raw_from_zip(
     info: Optional[Dict[str, Any]],
     tracker: Optional[ProvenanceTracker] = None,

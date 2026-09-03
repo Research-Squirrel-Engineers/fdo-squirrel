@@ -2,14 +2,16 @@ from pathlib import Path
 import argparse
 import json
 import html
+import re
 from datetime import datetime
 
 from ingest.package_source import load_package_from_source
 from ingest import load_md_cff_schema, validate_against_schema
 from crosswalks import md_cff_to_crosswalk
 from crosswalks.citation_crosswalk_engine import CitationCrosswalkEngine
-from fdo import crosswalk_to_rdf_turtle
+from fdo import crosswalk_to_rdf_turtle, build_generated_distributions_ttl
 from fdo_mermaid import FDOMermaidGenerator
+from fdo_finalize import render_mermaid_to_jpg, build_finished_bundle
 
 # --------------------------------------------------
 # HARDCODED FDO PACKAGE
@@ -394,7 +396,8 @@ def main():
         if alt.exists():
             json_report_path = alt
 
-    write_html_report(json_report_path, output_dir / "rdf_modelling_report.html", info)
+    html_report_path = output_dir / "rdf_modelling_report.html"
+    write_html_report(json_report_path, html_report_path, info)
 
     # --------------------------------------------------
     # Write Mermaid overview diagram
@@ -403,15 +406,68 @@ def main():
     try:
         gen = FDOMermaidGenerator(
             ttl_path=output_path,
-            html_path=output_dir / "rdf_modelling_report.html",
+            html_path=html_report_path,
         )
         gen.save(mermaid_path)
         print(f"✔ Mermaid diagram written to {mermaid_path}")
     except Exception as e:
         print(f"⚠ Mermaid generation skipped: {e}")
 
+    # --------------------------------------------------
+    # Render the Mermaid diagram as a high-resolution JPG (best effort -
+    # see fdo_finalize.render_mermaid_to_jpg for the Node/Pillow fallback)
+    # --------------------------------------------------
+    jpg_path = output_dir / "fdo_overview.jpg"
+    render_mermaid_to_jpg(mermaid_path, jpg_path)
+
+    # --------------------------------------------------
+    # Describe the generated companion files as additional
+    # dcat:Distribution entries, so the finished bundle below is fully
+    # self-describing (every file that ends up in it is modelled in the
+    # RDF, not just the original ZIP's members).
+    #
+    # Read these files from disk *before* overwriting fdo-metadata.ttl with
+    # the appended block below - the ttl's own byteSize/sha256 refer to its
+    # pre-append content, since a manifest cannot include a hash of its own
+    # final bytes.
+    # --------------------------------------------------
+    generated_files = [
+        p
+        for p in (output_path, json_report_path, html_report_path, mermaid_path, jpg_path)
+        if p.exists()
+    ]
+    extra_ttl = build_generated_distributions_ttl(
+        f"<{cw.id}>", cw.fdo_type, [(p, None) for p in generated_files]
+    )
+    if extra_ttl:
+        ttl = ttl.rstrip("\n") + "\n\n" + extra_ttl + "\n"
+        output_path.write_text(ttl, encoding="utf-8")
+        print(
+            f"✔ RDF updated with {len(generated_files)} generated-file "
+            f"distribution(s)"
+        )
+
     print(f"✔ RDF written to {output_path}")
     print(f"✔ Package source: {package_source}")
+
+    # --------------------------------------------------
+    # Bundle the original package + every generated file into one
+    # self-contained, ready-to-(re)publish ZIP.
+    # --------------------------------------------------
+    original_zip = info.get("package_local_path")
+    bundle_stem = Path(package_source.rstrip("/")).name
+    if bundle_stem.lower().endswith(".zip"):
+        bundle_stem = bundle_stem[: -len(".zip")]
+    bundle_stem = re.sub(r"[^A-Za-z0-9._-]+", "_", bundle_stem) or "fdo-package"
+    bundle_path = output_dir / f"{bundle_stem}-fdo-bundle.zip"
+
+    result = build_finished_bundle(
+        original_zip_path=Path(original_zip) if original_zip else None,
+        generated_files=generated_files,
+        output_zip_path=bundle_path,
+    )
+    if result:
+        print(f"✔ Finished FDO bundle written to {result}")
 
 
 if __name__ == "__main__":
