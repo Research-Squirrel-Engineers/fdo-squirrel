@@ -57,7 +57,7 @@ The input **must be a ZIP file** containing at least:
 
 ## Output
 
-Running the pipeline produces:
+Running the pipeline produces, in `output/`:
 
 - **`fdo-metadata.ttl`**  
   RDF/Turtle representation of the FDOx, combining:
@@ -73,6 +73,27 @@ Running the pipeline produces:
 
 - **`rdf_modelling_report.html`**  
   Human-readable HTML version of the modelling report
+
+- **`fdo_overview.mermaid`**  
+  A Mermaid flowchart summarising the FDO (core metadata, distributions by role)
+
+- **`fdo_overview.jpg`** *(optional)*  
+  A high-resolution render of the diagram above. Needs `mmdc`
+  ([Mermaid CLI](https://github.com/mermaid-js/mermaid-cli)) on `PATH` and
+  Pillow installed; if either is missing, this step is skipped with a
+  one-line warning and everything else still runs.
+
+- **`<package-name>-fdo-bundle.zip`**  
+  The original source ZIP plus all of the files above, packaged into one
+  self-contained, ready-to-(re)publish archive - replacing any stale copies
+  of those same filenames the source ZIP already carried (from a previous
+  manual round of this same workflow, for example).
+
+All of the generated files - including the TTL and the bundle's own
+contents - are themselves described as `dcat:Distribution` entries inside
+`fdo-metadata.ttl`, using the same content-addressing and role
+classification as the original ZIP's members: the finished bundle is fully
+self-describing, not just a folder of loosely related files.
 
 ---
 
@@ -102,7 +123,24 @@ python main.py
 python main.py --package "C:/tmp/fdox/GEARS_1.zip"
 ```
 
-This overrides any local configuration.
+`--package` (or its short form `-p`) accepts a local path or a direct ZIP
+URL, and takes priority over `config.local.json` and the hardcoded
+`PACKAGE_SOURCE` fallback in `main.py` for that one run - nothing else
+needs to change to try a different package.
+
+---
+
+### Optional – high-resolution diagram render
+
+`fdo_overview.jpg` needs Node.js plus the Mermaid CLI:
+
+```bash
+npm install -g @mermaid-js/mermaid-cli
+pip install -r requirements.txt   # picks up Pillow, used for the PNG->JPG step
+```
+
+Without these, `python main.py` still produces everything else - the JPG
+render is the only step that's skipped, not the whole run.
 
 ---
 

@@ -162,6 +162,19 @@ def _extract_from_md_cff(md_path: Path, meta: FDOMetadata) -> None:
     except Exception:
         return
 
+    _apply_md_cff_dict(data, meta)
+
+
+def _apply_md_cff_dict(data: dict, meta: FDOMetadata) -> None:
+    """Apply an already-parsed MD.cff dict to `meta`. Shared by
+    _extract_from_md_cff() (loads from a path) and callers that already
+    have the dict in memory (main.py, right after load_package_from_source())
+    and would otherwise have to write a throwaway MD.cff copy to disk just
+    to satisfy a path-based API.
+    """
+    if not isinstance(data, dict):
+        return
+
     if meta.title == "?":
         meta.title = str(data.get("title", "?")).strip() or "?"
     if meta.version == "?":
@@ -523,20 +536,29 @@ class FDOMermaidGenerator:
         self,
         ttl_path: Optional[str | Path] = None,
         html_path: Optional[str | Path] = None,
+        md_dict: Optional[dict] = None,
     ) -> None:
         if ttl_path is None and html_path is None:
             raise ValueError("Provide at least one of ttl_path or html_path.")
         self.ttl_path = Path(ttl_path) if ttl_path else None
         self.html_path = Path(html_path) if html_path else None
+        self.md_dict = md_dict
         self._meta: Optional[FDOMetadata] = None
 
     def extract(self) -> FDOMetadata:
         meta = FDOMetadata()
         if self.ttl_path and self.ttl_path.exists():
             _extract_from_ttl(self.ttl_path, meta)
-            md_path = self.ttl_path.with_name("MD.cff")
-            if md_path.exists():
-                _extract_from_md_cff(md_path, meta)
+            if self.md_dict is not None:
+                _apply_md_cff_dict(self.md_dict, meta)
+            else:
+                # Fallback for callers without the parsed dict on hand (e.g.
+                # the CLI entry point below): only works if an MD.cff
+                # actually sits next to the ttl, which main.py's own run
+                # does not currently arrange for.
+                md_path = self.ttl_path.with_name("MD.cff")
+                if md_path.exists():
+                    _extract_from_md_cff(md_path, meta)
         if self.html_path and self.html_path.exists():
             _extract_from_html(self.html_path, meta)
         self._meta = meta

@@ -407,6 +407,7 @@ def main():
         gen = FDOMermaidGenerator(
             ttl_path=output_path,
             html_path=html_report_path,
+            md_dict=md,
         )
         gen.save(mermaid_path)
         print(f"✔ Mermaid diagram written to {mermaid_path}")
