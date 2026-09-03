@@ -399,13 +399,13 @@ def generate_mermaid_3d(meta: FDOMetadata) -> str:
 
     lines = [
         "flowchart TD",
-        f'    FDO["🗂️ **FDO: {meta.title}**',
+        f'    FDO["`🗂️ **FDO: {meta.title}**',
         f"    DOI: {doi}",
-        f'    {total} files · {meta.license} · v{meta.version}"]',
+        f'    {total} files · {meta.license} · v{meta.version}`"]',
         "",
         "    FDO --- PROVMETA",
         "",
-        '    PROVMETA["📋 **Core Metadata**',
+        '    PROVMETA["`📋 **Core Metadata**',
         "    ────────────────────────────",
         f"    🏛️ Object: {_wd(meta.object_label, meta.object_wikidata)}",
         f"    🪨 Material: {_wd(meta.material_label, meta.material_wikidata)}",
@@ -418,7 +418,7 @@ def generate_mermaid_3d(meta: FDOMetadata) -> str:
         f"    lat: {meta.latitude} · lon: {meta.longitude}",
         f"    🕐 Temporal: {meta.temporal_id}",
         f"    start: {meta.temporal_start} · end: {meta.temporal_end}",
-        f'    ⚙️ Technique: {meta.technique}"]',
+        f'    ⚙️ Technique: {meta.technique}`"]',
         "",
     ]
 
@@ -434,9 +434,9 @@ def generate_mermaid_3d(meta: FDOMetadata) -> str:
         body = _render_role_body(role, meta.distributions[role])
 
         lines += [
-            f'    {node_id}["{label}',
+            f'    {node_id}["`{label}',
             "    ────────────────",
-            f'{body}"]',
+            f'{body}`"]',
             "",
         ]
 
@@ -458,19 +458,19 @@ def generate_mermaid_software(meta: FDOMetadata) -> str:
 
     lines = [
         "flowchart TD",
-        f'    FDO["🗂️ **FDO: {meta.title}**',
+        f'    FDO["`🗂️ **FDO: {meta.title}**',
         f"    DOI: {doi}",
-        f'    {total} files · {meta.license} · v{meta.version}"]',
+        f'    {total} files · {meta.license} · v{meta.version}`"]',
         "",
         "    FDO --- PROVMETA",
         "",
-        '    PROVMETA["📋 **Core Metadata**',
+        '    PROVMETA["`📋 **Core Metadata**',
         "    ────────────────────────────",
         f"    🏷️ Keywords: {kws}",
         f"    📅 Created: {meta.date_created}",
         f"    👤 Creator: {meta.creator}",
         f"    🏢 Publisher: {meta.publisher}",
-        f'    ⚙️ Technical Stack: {meta.technique}"]',
+        f'    ⚙️ Technical Stack: {meta.technique}`"]',
         "",
     ]
 
@@ -495,9 +495,9 @@ def generate_mermaid_software(meta: FDOMetadata) -> str:
         body = _render_role_body(role, meta.distributions[role])
 
         lines += [
-            f'    {node_id}["{label}',
+            f'    {node_id}["`{label}',
             "    ────────────────",
-            f'{body}"]',
+            f'{body}`"]',
             "",
         ]
 
