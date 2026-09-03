@@ -313,6 +313,9 @@ def _ttl_escape(s: str) -> str:
 def _ttl_lit(value: Any, datatype: Optional[str] = None) -> str:
     if value is None:
         return '""'
+    if datatype:
+        s = _ttl_escape(str(value))
+        return f'"{s}"^^{datatype}'
     if isinstance(value, bool):
         return ('"true"' if value else '"false"') + "^^xsd:boolean"
     if isinstance(value, int):
@@ -321,7 +324,7 @@ def _ttl_lit(value: Any, datatype: Optional[str] = None) -> str:
         # keep as decimal
         return f'"{value}"^^xsd:decimal'
     s = _ttl_escape(str(value))
-    return f'"{s}"^^{datatype}' if datatype else f'"{s}"'
+    return f'"{s}"'
 
 
 def _format_gyear(value: Any) -> str:
@@ -495,109 +498,129 @@ def _apply_md_cff_mapping(
                 )
             continue
 
-        # emit list (used by spatial)
+        # emit list (used by spatial, keywords, related_resources, ...)
         if isinstance(spec, dict) and "emit" in spec and isinstance(spec["emit"], list):
-            for e in spec["emit"]:
-                if "predicate" in e:
-                    pred = e["predicate"]
-                    src_key = e.get("from")
-                    v = (
-                        val
-                        if not src_key
-                        else (val.get(src_key) if isinstance(val, dict) else None)
-                    )
-                    if v is None:
-                        continue
-                    vtype = e.get("value_type", "literal")
-                    if vtype == "iri_optional":
-                        if _is_iri(v):
-                            inline.append(f"    {pred} {_as_iri(str(v))} ;")
-                            tracker.record(
-                                field=f"dataset.{key}.{src_key}",
-                                source="MD.cff",
-                                detail=v,
-                            )
-                            # spatial has no {id, label} pairing in the
-                            # schema - label sits as a sibling field on the
-                            # same spatial object, so pick it up from there.
-                            if (
-                                key == "spatial"
-                                and isinstance(val, dict)
-                                and isinstance(val.get("label"), str)
-                                and val["label"].strip()
-                            ):
-                                post.append(
-                                    f"{_as_iri(str(v))} {label_pred} "
-                                    f"{_ttl_lit(val['label'].strip())} ."
-                                )
-                    elif vtype == "literal":
-                        inline.append(f"    {pred} {_ttl_lit(v)} ;")
-                        tracker.record(
-                            field=f"dataset.{key}.{src_key}", source="MD.cff", detail=v
-                        )
-                    elif vtype == "bbox_envelope":
-                        envelope = _format_bbox_envelope(str(v))
-                        if envelope:
-                            crs_wkt = (
-                                "<http://www.opengis.net/def/crs/EPSG/0/4326> "
-                                + envelope
-                            )
-                            inline.append(
-                                f'    {pred} "{_ttl_escape(crs_wkt)}"^^geosparql:wktLiteral ;'
-                            )
-                            tracker.record(
-                                field=f"dataset.{key}.{src_key}",
-                                source="MD.cff",
-                                detail=v,
-                            )
-                    else:
-                        inline.append(f"    {pred} {_ttl_lit(v)} ;")
-                        tracker.record(
-                            field=f"dataset.{key}.{src_key}", source="MD.cff", detail=v
-                        )
-                elif "handler" in e:
-                    # currently only geosparql_geometry from wkt
-                    hname = e["handler"]
-                    src_key = e.get("from")
-                    wkt = (
-                        val.get(src_key)
-                        if (isinstance(val, dict) and src_key)
-                        else None
-                    )
-                    if (
-                        hname == "geosparql_geometry"
-                        and isinstance(wkt, str)
-                        and wkt.strip()
-                    ):
-                        # inline explicit lat/lon if present (as requested)
-                        if (
-                            isinstance(val.get("lat"), (int, float, str))
-                            and str(val.get("lat")).strip()
-                        ):
-                            inline.append(
-                                f"    schema:latitude {_ttl_lit(val.get('lat'), datatype='xsd:decimal')} ;"
-                            )
-                        if (
-                            isinstance(val.get("lon"), (int, float, str))
-                            and str(val.get("lon")).strip()
-                        ):
-                            inline.append(
-                                f"    schema:longitude {_ttl_lit(val.get('lon'), datatype='xsd:decimal')} ;"
-                            )
+            multiple = bool(spec.get("multiple"))
+            items = val if (multiple and isinstance(val, list)) else [val]
 
-                        node = f"<{md.get('id')}_geom>"
-                        sf_type = _infer_sf_type_from_wkt(wkt)
-                        post.append(f"{subj} geosparql:hasGeometry {node} .")
-                        post.append(f"{node} a {sf_type} .")
-                        post.append(
-                            f'{node} geosparql:asWKT "{_ttl_escape("<http://www.opengis.net/def/crs/EPSG/0/4326> " + wkt.strip())}"^^geosparql:wktLiteral .'
+            for item in items:
+                if item is None:
+                    continue
+                for e in spec["emit"]:
+                    if "predicate" in e:
+                        pred = e["predicate"]
+                        src_key = e.get("from")
+                        v = (
+                            item
+                            if not src_key
+                            else (item.get(src_key) if isinstance(item, dict) else None)
                         )
-                        tracker.record(
-                            field="dataset.spatial.geometry",
-                            source="MD.cff",
-                            detail={"sf_type": sf_type},
-                            count_inc=1,
+                        if v is None:
+                            continue
+                        vtype = e.get("value_type", "literal")
+                        if vtype == "iri_optional":
+                            if _is_iri(v):
+                                inline.append(f"    {pred} {_as_iri(str(v))} ;")
+                                tracker.record(
+                                    field=f"dataset.{key}.{src_key}",
+                                    source="MD.cff",
+                                    detail=v,
+                                )
+                                # spatial has no {id, label} pairing in the
+                                # schema - label sits as a sibling field on
+                                # the same spatial object, so pick it up
+                                # from there.
+                                if (
+                                    key == "spatial"
+                                    and isinstance(item, dict)
+                                    and isinstance(item.get("label"), str)
+                                    and item["label"].strip()
+                                ):
+                                    post.append(
+                                        f"{_as_iri(str(v))} {label_pred} "
+                                        f"{_ttl_lit(item['label'].strip())} ."
+                                    )
+                        elif vtype == "literal":
+                            inline.append(f"    {pred} {_ttl_lit(v)} ;")
+                            tracker.record(
+                                field=f"dataset.{key}.{src_key}",
+                                source="MD.cff",
+                                detail=v,
+                            )
+                        elif vtype == "bbox_envelope":
+                            envelope = _format_bbox_envelope(str(v))
+                            if envelope:
+                                crs_wkt = (
+                                    "<http://www.opengis.net/def/crs/EPSG/0/4326> "
+                                    + envelope
+                                )
+                                inline.append(
+                                    f'    {pred} "{_ttl_escape(crs_wkt)}"^^geosparql:wktLiteral ;'
+                                )
+                                tracker.record(
+                                    field=f"dataset.{key}.{src_key}",
+                                    source="MD.cff",
+                                    detail=v,
+                                )
+                        elif vtype == "object_id_label":
+                            _emit_object_id_label_inline(
+                                pred, v, inline, post, label_predicate=label_pred
+                            )
+                            tracker.record(
+                                field=f"dataset.{key}.{src_key}",
+                                source="MD.cff",
+                                detail=v,
+                            )
+                        else:
+                            inline.append(f"    {pred} {_ttl_lit(v)} ;")
+                            tracker.record(
+                                field=f"dataset.{key}.{src_key}",
+                                source="MD.cff",
+                                detail=v,
+                            )
+                    elif "handler" in e:
+                        # currently only geosparql_geometry from wkt
+                        hname = e["handler"]
+                        src_key = e.get("from")
+                        wkt = (
+                            item.get(src_key)
+                            if (isinstance(item, dict) and src_key)
+                            else None
                         )
+                        if (
+                            hname == "geosparql_geometry"
+                            and isinstance(wkt, str)
+                            and wkt.strip()
+                        ):
+                            # inline explicit lat/lon if present (as requested)
+                            if (
+                                isinstance(item.get("lat"), (int, float, str))
+                                and str(item.get("lat")).strip()
+                            ):
+                                inline.append(
+                                    f"    schema:latitude {_ttl_lit(item.get('lat'), datatype='xsd:decimal')} ;"
+                                )
+                            if (
+                                isinstance(item.get("lon"), (int, float, str))
+                                and str(item.get("lon")).strip()
+                            ):
+                                inline.append(
+                                    f"    schema:longitude {_ttl_lit(item.get('lon'), datatype='xsd:decimal')} ;"
+                                )
+
+                            node = f"<{md.get('id')}_geom>"
+                            sf_type = _infer_sf_type_from_wkt(wkt)
+                            post.append(f"{subj} geosparql:hasGeometry {node} .")
+                            post.append(f"{node} a {sf_type} .")
+                            post.append(
+                                f'{node} geosparql:asWKT "{_ttl_escape("<http://www.opengis.net/def/crs/EPSG/0/4326> " + wkt.strip())}"^^geosparql:wktLiteral .'
+                            )
+                            tracker.record(
+                                field="dataset.spatial.geometry",
+                                source="MD.cff",
+                                detail={"sf_type": sf_type},
+                                count_inc=1,
+                            )
             continue
 
         # normal predicate mappings
