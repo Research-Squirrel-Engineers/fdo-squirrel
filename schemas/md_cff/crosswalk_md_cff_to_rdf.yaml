@@ -148,6 +148,12 @@ mappings:
         from: "target"
         value_type: "object_id_label"
 
+  # ---------------- Identifiers ----------------
+  identifiers:
+    multiple: true
+    emit:
+      - handler: "typed_identifier"
+
   # ---------------- Spatial ----------------
   spatial:
     emit:

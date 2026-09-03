@@ -621,6 +621,48 @@ def _apply_md_cff_mapping(
                                 detail={"sf_type": sf_type},
                                 count_inc=1,
                             )
+                        elif hname == "typed_identifier" and isinstance(item, dict):
+                            scheme = str(item.get("scheme") or "").strip().lower()
+                            value = item.get("value")
+                            label = item.get("label")
+                            if isinstance(value, str) and value.strip():
+                                value = value.strip()
+                                label = (
+                                    label.strip()
+                                    if isinstance(label, str) and label.strip()
+                                    else None
+                                )
+                                if value.startswith(("http://", "https://")):
+                                    iri: Optional[str] = value
+                                elif scheme == "doi":
+                                    iri = f"https://doi.org/{value}"
+                                else:
+                                    # Other schemes in the enum (orcid, ror,
+                                    # handle, ark, isbn, issn, swhid, other)
+                                    # don't have a single safe bare-code ->
+                                    # URI rule to guess at here, so they stay
+                                    # literals unless already given as a URL.
+                                    iri = None
+
+                                if iri:
+                                    inline.append(
+                                        f"    dct:identifier {_as_iri(iri)} ;"
+                                    )
+                                    if label:
+                                        post.append(
+                                            f"{_as_iri(iri)} {label_pred} "
+                                            f"{_ttl_lit(label)} ."
+                                        )
+                                else:
+                                    inline.append(
+                                        f"    dct:identifier {_ttl_lit(value)} ;"
+                                    )
+                                tracker.record(
+                                    field=f"dataset.{key}",
+                                    source="MD.cff",
+                                    detail={"scheme": scheme, "value": value},
+                                    count_inc=1,
+                                )
             continue
 
         # normal predicate mappings
@@ -1458,55 +1500,10 @@ def crosswalk_to_rdf_turtle(
     )
     tracker.record(field="dataset.title", source="MD.cff", detail={"title": cw_title})
 
-    # identifiers (MD.cff) → RDF
-    identifiers = getattr(cw, "identifiers", None)
-    if identifiers and isinstance(identifiers, list):
-        ident_count = 0
-        sameas_count = 0
-        for ident in identifiers:
-            if isinstance(ident, str):
-                if ident.startswith(("http://", "https://")):
-                    lines.append(f"    dct:identifier <{ident}> ;")
-                else:
-                    lines.append(f'    dct:identifier "{ident}" ;')
-                ident_count += 1
-                continue
-
-            if not isinstance(ident, dict):
-                continue
-
-            ident_id = ident.get("id")
-            ident_label = ident.get("label")
-            same_as = ident.get("sameAs") or ident.get("same_as") or []
-
-            if isinstance(ident_id, str) and ident_id.startswith(
-                ("http://", "https://")
-            ):
-                lines.append(f"    dct:identifier <{ident_id}> ;")
-                ident_count += 1
-            elif isinstance(ident_id, str) and ident_id.strip():
-                lines.append(f'    dct:identifier "{ident_id.strip()}" ;')
-                ident_count += 1
-
-            if isinstance(ident_label, str) and ident_label.strip():
-                lines.append(f'    dct:identifier "{ident_label.strip()}" ;')
-                ident_count += 1
-
-            if isinstance(same_as, list):
-                for sa in same_as:
-                    if isinstance(sa, str) and sa.startswith(("http://", "https://")):
-                        lines.append(f"    owl:sameAs <{sa}> ;")
-                        sameas_count += 1
-
-        tracker.record(
-            field="dataset.identifiers",
-            source="MD.cff",
-            detail={
-                "dct:identifier_count": ident_count,
-                "owl:sameAs_count": sameas_count,
-            },
-            count_inc=ident_count,
-        )
+    # identifiers (MD.cff) -> RDF: handled by the mapping-driven
+    # typed_identifier handler below (via _apply_md_cff_mapping), which
+    # reads scheme/value/label straight from the raw MD.cff dict - see
+    # schemas/md_cff/crosswalk_md_cff_to_rdf.yaml.
 
     # Landing page if present
     landing = getattr(cw, "landing_page", None) or getattr(cw, "landingPage", None)
