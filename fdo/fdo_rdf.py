@@ -324,6 +324,33 @@ def _ttl_lit(value: Any, datatype: Optional[str] = None) -> str:
     return f'"{s}"^^{datatype}' if datatype else f'"{s}"'
 
 
+def _format_gyear(value: Any) -> str:
+    """Format an integer year as a valid xsd:gYear lexical value.
+
+    xsd:gYear requires an optional leading '-' followed by at least four
+    digits, zero-padded on the left when the year itself has fewer than
+    four digits (e.g. 300 -> "0300", -776 -> "-0776"). Years already at or
+    above four digits, positive or negative, are left as-is.
+    """
+    year = int(value)
+    sign = "-" if year < 0 else ""
+    digits = str(abs(year)).zfill(4)
+    return f"{sign}{digits}"
+
+
+def _format_bbox_envelope(bbox: str) -> Optional[str]:
+    """Reorder a 'west,south,east,north' bbox string into the GeoSPARQL
+    Simple Features ENVELOPE WKT extension: ENVELOPE(minX, maxX, maxY, minY),
+    i.e. (west, east, north, south). Returns None if the value does not
+    split into exactly four comma-separated parts.
+    """
+    parts = [p.strip() for p in bbox.split(",")]
+    if len(parts) != 4:
+        return None
+    west, south, east, north = parts
+    return f"ENVELOPE({west}, {east}, {north}, {south})"
+
+
 def _is_iri(v: Any) -> bool:
     return isinstance(v, str) and v.strip().startswith(("http://", "https://", "urn:"))
 
@@ -375,6 +402,8 @@ def _emit_object_id_label_inline(
 
         if iri:
             inline.append(f"    {predicate} {_as_iri(iri)} ;")
+            if label:
+                post.append(f"{_as_iri(iri)} {label_predicate} {_ttl_lit(label)} .")
         elif label:
             bcount += 1
             node = f"{bnode_prefix}{bcount}"
@@ -453,11 +482,13 @@ def _apply_md_cff_mapping(
                     post.append(f"{node} rdfs:label {_ttl_lit(val['label'].strip())} .")
                 if val.get("start") is not None:
                     post.append(
-                        f"{node} dcat:startDate {_ttl_lit(val['start'], datatype='xsd:integer')} ."
+                        f"{node} dcat:startDate "
+                        f"{_ttl_lit(_format_gyear(val['start']), datatype='xsd:gYear')} ."
                     )
                 if val.get("end") is not None:
                     post.append(
-                        f"{node} dcat:endDate {_ttl_lit(val['end'], datatype='xsd:integer')} ."
+                        f"{node} dcat:endDate "
+                        f"{_ttl_lit(_format_gyear(val['end']), datatype='xsd:gYear')} ."
                     )
                 tracker.record(
                     field="dataset.temporal", source="MD.cff", detail=val, count_inc=1
@@ -486,11 +517,39 @@ def _apply_md_cff_mapping(
                                 source="MD.cff",
                                 detail=v,
                             )
+                            # spatial has no {id, label} pairing in the
+                            # schema - label sits as a sibling field on the
+                            # same spatial object, so pick it up from there.
+                            if (
+                                key == "spatial"
+                                and isinstance(val, dict)
+                                and isinstance(val.get("label"), str)
+                                and val["label"].strip()
+                            ):
+                                post.append(
+                                    f"{_as_iri(str(v))} {label_pred} "
+                                    f"{_ttl_lit(val['label'].strip())} ."
+                                )
                     elif vtype == "literal":
                         inline.append(f"    {pred} {_ttl_lit(v)} ;")
                         tracker.record(
                             field=f"dataset.{key}.{src_key}", source="MD.cff", detail=v
                         )
+                    elif vtype == "bbox_envelope":
+                        envelope = _format_bbox_envelope(str(v))
+                        if envelope:
+                            crs_wkt = (
+                                "<http://www.opengis.net/def/crs/EPSG/0/4326> "
+                                + envelope
+                            )
+                            inline.append(
+                                f'    {pred} "{_ttl_escape(crs_wkt)}"^^geosparql:wktLiteral ;'
+                            )
+                            tracker.record(
+                                field=f"dataset.{key}.{src_key}",
+                                source="MD.cff",
+                                detail=v,
+                            )
                     else:
                         inline.append(f"    {pred} {_ttl_lit(v)} ;")
                         tracker.record(
@@ -1148,7 +1207,10 @@ def crosswalk_to_rdf_turtle(
         )
 
     # ---------- Core dataset block ----------
-    lines.append(f"{subj} a dcat:Dataset, crmdig:D1, crm:E73, {cw_fdo_type} ;")
+    lines.append(
+        f"{subj} a dcat:Dataset, crmdig:D1_Digital_Object, "
+        f"crm:E73_Information_Object, {cw_fdo_type} ;"
+    )
 
     created = getattr(cw, "created", None)
     issued = getattr(cw, "issued", None)
@@ -1420,7 +1482,7 @@ def crosswalk_to_rdf_turtle(
         mt = _media_type(name, tracker=tracker)
         access_url = f"<urn:fdo-squirrel:content/{quote(name, safe='')}>"
 
-        lines.append(f"{dist_uri} a dcat:Distribution, crmdig:D9 ;")
+        lines.append(f"{dist_uri} a dcat:Distribution, crmdig:D9_Data_Object ;")
         lines.append(f"    dcat:accessURL {access_url} ;")
         if isinstance(size, int):
             lines.append(f"    dcat:byteSize {size} ;")

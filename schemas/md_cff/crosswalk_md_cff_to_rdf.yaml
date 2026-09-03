@@ -154,9 +154,9 @@ mappings:
       - predicate: "dct:spatial"
         from: "id"
         value_type: "iri_optional"
-      - predicate: "dcat:bbox"
+      - predicate: "geosparql:hasBoundingBox"
         from: "bounding_box"
-        value_type: "literal" # "west,south,east,north"
+        value_type: "bbox_envelope" # "west,south,east,north" -> ENVELOPE(west,east,north,south)^^geosparql:wktLiteral
       - handler: "geosparql_geometry"
         from: "wkt"
 
