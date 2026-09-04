@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fdo-squirrel"
+version = "0.1.0"
+description = "FAIR Data Object, exchangeable (FDOx) reference implementation: ZIP package -> RDF"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = [
+    "pyyaml",
+    "requests",
+    "jsonschema",
+    "Pillow",
+    "beautifulsoup4",
+]
+
+# Consumers that only need the crosswalk and cannot render the optional
+# Mermaid preview image (fdo_overview.jpg) do not need this - see the
+# "optional" note in README.md's Output section. Kept out of the base
+# dependency list so `pip install fdo-squirrel` stays lean for callers
+# that only want fdo-metadata.ttl.
+
+[project.scripts]
+fdo-squirrel = "main:main"
+
+[tool.setuptools]
+py-modules = ["main", "fdo_mermaid", "fdo_finalize"]
+packages = ["fdo", "crosswalks", "ingest", "schemas", "schemas.md_cff"]
+
+[tool.setuptools.package-data]
+fdo = ["classification_rules.yaml"]
+crosswalks = ["*.csv", "*.json", "*.yaml"]
+"schemas.md_cff" = ["*.yaml"]

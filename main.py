@@ -34,6 +34,17 @@ def resolve_package_source(default_value: str) -> str:
     parser.add_argument(
         "--package", "-p", default=None, help="Path or URL to FDO ZIP package"
     )
+    parser.add_argument(
+        "--outdir",
+        "-o",
+        default=None,
+        help=(
+            "Directory to write output/ into (default: ./output in the "
+            "current working directory). Matters once fdo-squirrel is "
+            "pip-installed: without this, output would otherwise be "
+            "resolved relative to the installed package location."
+        ),
+    )
     args, _ = parser.parse_known_args()  # ignore unknown args (e.g. pytest flags)
 
     if args.package:
@@ -335,15 +346,25 @@ def write_html_report(json_path: Path, html_path: Path, context: dict):
 
 def main():
     # --------------------------------------------------
-    # Project root and output
+    # Project root (for packaged data: schemas/, crosswalks/, ...)
+    # and output directory (for what this run writes)
     # --------------------------------------------------
     project_root = Path(__file__).resolve().parent
-    output_dir = project_root / "output"
+
+    # These are deliberately different locations once fdo-squirrel is
+    # pip-installed: project_root then points into site-packages, where a
+    # run has no business writing, and may not even be writable. --outdir
+    # (or plain cwd) keeps output where the caller's shell already is,
+    # which is what a scripted release step needs to find it again.
+    outdir_parser = argparse.ArgumentParser(add_help=False)
+    outdir_parser.add_argument("--outdir", "-o", default=None)
+    outdir_args, _ = outdir_parser.parse_known_args()
+    output_dir = Path(outdir_args.outdir) if outdir_args.outdir else Path.cwd() / "output"
     import shutil
 
     if output_dir.exists():
         shutil.rmtree(output_dir)
-    output_dir.mkdir()
+    output_dir.mkdir(parents=True)
 
     output_path = output_dir / "fdo-metadata.ttl"
 

@@ -119,3 +119,24 @@ fdo_classes:
       - match:
           filename: ["MD.cff", "CITATION.cff"]
         role: metadata
+
+  fdo:RegistryFDO:
+    default_role: data
+    rules:
+      - match:
+          filename_prefix: ["shapes"]
+          extension: [".ttl"]
+        role: metadata
+
+      - match:
+          filename: ["MD.cff", "CITATION.cff"]
+        role: metadata
+
+      - match:
+          filename_prefix: ["README"]
+          extension: [".md", ".txt"]
+        role: documentation
+
+      - match:
+          extension: [".ttl", ".nt", ".jsonld", ".json"]
+        role: data

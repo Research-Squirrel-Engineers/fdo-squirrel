@@ -43,7 +43,7 @@ The input **must be a ZIP file** containing at least:
 ### 2. `MD.cff`
 - Valid according to the **project-specific MD.cff schema**
 - Used for:
-  - FDOx type (`fdo:SoftwareFDO`, `fdo:AnalysisFDO`, `fdo:3DDataFDO`)
+  - FDOx type (`fdo:SoftwareFDO`, `fdo:AnalysisFDO`, `fdo:3DDataFDO`, `fdo:RegistryFDO`)
   - title, description, version
   - licence, publisher
   - spatial and temporal metadata

@@ -26,6 +26,7 @@ properties:
       - "fdo:SoftwareFDO"
       - "fdo:AnalysisFDO"
       - "fdo:3DDataFDO"
+      - "fdo:RegistryFDO"
 
   id:
     type: string

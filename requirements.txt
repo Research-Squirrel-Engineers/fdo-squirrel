@@ -2,3 +2,4 @@ pyyaml
 requests
 jsonschema
 Pillow
+beautifulsoup4
