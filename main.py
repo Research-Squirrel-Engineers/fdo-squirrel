@@ -374,8 +374,14 @@ def main():
     package_source = resolve_package_source(PACKAGE_SOURCE)
     md, cff, info = load_package_from_source(package_source)
 
-    # Centralised provenance: remember exactly which package was used
+    # Centralised provenance: remember exactly which package was used, and
+    # where this run's output_dir is - fdo_rdf.py's JSON-report writer reads
+    # info["output_dir"] independently of the output_dir this function
+    # already resolved above, so both have to agree or the report ends up
+    # relative to whatever the current directory happens to be instead of
+    # --outdir.
     info["package_source"] = package_source
+    info["output_dir"] = str(output_dir)
 
     # --------------------------------------------------
     # Validate MD.cff against schema
