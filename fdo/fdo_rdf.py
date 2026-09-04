@@ -6,7 +6,6 @@ import mimetypes
 import yaml
 import zipfile
 import hashlib
-from urllib.parse import quote
 import json
 from datetime import datetime, timezone
 
@@ -308,6 +307,29 @@ def _md_get(root: Any, key: str) -> Any:
 
 def _ttl_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+
+
+def _ttl_iri_escape(s: str) -> str:
+    """Turtle-escape a string for embedding inside an IRIREF (<...>).
+
+    Turtle's IRIREF grammar forbids the raw characters U+0000-U+0020 and
+    < > " { } | ^ ` \\ ; every other character, including '/' and ',', is
+    legal unescaped and is left as-is. This is deliberately *not*
+    percent-encoding: a percent-encoded path here gets percent-encoded a
+    *second* time by any downstream consumer that does its own encoding
+    (PRIMER A4 in fdo-squirrel-registry, Befund 33 - `content_iri()` there
+    already applies `urllib.parse.quote()` once when it rewrites this URN
+    into a registry-scoped IRI). A raw, human-readable path is what a
+    correctly-behaving consumer expects to encode itself, exactly once.
+    """
+    forbidden = set('<>"{}|^`\\')
+    out = []
+    for ch in s:
+        if ord(ch) <= 0x20 or ch in forbidden:
+            out.append(f"\\u{ord(ch):04X}")
+        else:
+            out.append(ch)
+    return "".join(out)
 
 
 def _ttl_lit(value: Any, datatype: Optional[str] = None) -> str:
@@ -899,7 +921,7 @@ def build_generated_distributions_ttl(
         sha256_hex = hashlib.sha256(data).hexdigest()
         name = path.name
         dist_uri = f"<urn:fdo-squirrel:dist/{sha256_hex[:16]}>"
-        access_url = f"<urn:fdo-squirrel:content/{quote(name, safe='')}>"
+        access_url = f"<urn:fdo-squirrel:content/{_ttl_iri_escape(name)}>"
         role = role_override or _classify_role(
             name, fdo_type, rules_cfg, tracker=tracker
         )
@@ -1582,7 +1604,7 @@ def crosswalk_to_rdf_turtle(
 
         role = _classify_role(name, cw_fdo_type, rules_cfg, tracker=tracker)
         mt = _media_type(name, tracker=tracker)
-        access_url = f"<urn:fdo-squirrel:content/{quote(name, safe='')}>"
+        access_url = f"<urn:fdo-squirrel:content/{_ttl_iri_escape(name)}>"
 
         lines.append(f"{dist_uri} a dcat:Distribution, crmdig:D9_Data_Object ;")
         lines.append(f"    dcat:accessURL {access_url} ;")
